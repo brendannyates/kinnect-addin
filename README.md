@@ -1,4 +1,4 @@
-# Kinnect (Excel on the web add-in)
+# Kinnect Relay (Excel on the web add-in)
 
 Full brief (uses, features, automations, safety): [BRIEF.md](BRIEF.md).
 
@@ -10,6 +10,7 @@ Front desk and resource notifications inside one shared workbook, plus one-click
 - **Resources** (name, Zoom room, Nudge AI, default room) are rows in `KinnectResources` on the **Resources** sheet. Clinicians can edit their own links from the pane. Only `https://` links open.
 - **Today's appointments** come from the NextGen report pasted on the **Appt List** sheet. The pane finds the header row by name (`APPT_HDR` in `taskpane.js`).
 - **Sounds** are `assets/sounds/bing|boom|bop|bow` (`.mp3`, `.wav`, `.ogg` or `.m4a`). A missing file falls back to a built-in chime.
+- **Kinnect tool bar** across the top: TMS · ESK · Relay · Billing · IR Portal, with Relay as home. Each button opens that workbook in a new tab, using links saved per computer in Settings. Links go one way for now.
 - **Per-computer settings** (who I am, notify on/off, sound, volume, pop-ups, patient code on one-click alerts) are saved in the browser, not the workbook.
 
 One-click alerts carry no patient identifier. A LASFIR code (last three + first three letters) is optional. Names from the report are converted in the pane and never written to the log. The hosted files contain no PHI; `.gitignore` blocks spreadsheets and CSVs.

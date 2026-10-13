@@ -11,10 +11,10 @@
   xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides"
   xsi:type="TaskPaneApp">
   <Id>1c51df91-8ae0-4adf-af63-7478698cbf05</Id>
-  <Version>0.2.0.0</Version>
+  <Version>0.3.0.0</Version>
   <ProviderName>Radial</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
-  <DisplayName DefaultValue="Kinnect"/>
+  <DisplayName DefaultValue="Kinnect Relay"/>
   <Description DefaultValue="Front desk and resource (clinician or device) arrival notifications in a shared workbook, with sounds and one-click Zoom and Nudge AI launch."/>
   <IconUrl DefaultValue="https://brendannyates.github.io/kinnect-addin/assets/icon-32.png"/>
   <HighResolutionIconUrl DefaultValue="https://brendannyates.github.io/kinnect-addin/assets/icon-64.png"/>
@@ -81,10 +81,10 @@
       </bt:Urls>
       <bt:ShortStrings>
         <bt:String id="Group.Label" DefaultValue="Kinnect"/>
-        <bt:String id="Button.Label" DefaultValue="Kinnect"/>
+        <bt:String id="Button.Label" DefaultValue="Relay"/>
       </bt:ShortStrings>
       <bt:LongStrings>
-        <bt:String id="Button.Tip" DefaultValue="Open Kinnect: front desk and clinician notifications, plus Zoom and Nudge AI launch."/>
+        <bt:String id="Button.Tip" DefaultValue="Open Kinnect Relay: front desk and resource notifications, Zoom and Nudge AI launch, and links to the other Kinnect tools."/>
       </bt:LongStrings>
     </Resources>
   </VersionOverrides>

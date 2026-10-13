@@ -19,8 +19,9 @@ const LASFIR = /^[A-Z]{2,6}$/;   // short names give shorter codes (Ng, Al = NGA
 /* the four kin-nect sound slots: drop bing/boom/bop/bow (.mp3, .wav, .ogg or .m4a) into assets/sounds; a missing file falls back to the built-in chime */
 const SOUNDS = ["bing", "boom", "bop", "bow"], SOUND_EXTS = ["mp3", "wav", "ogg", "m4a"];
 const DEV_DEFAULT = { receive: true, sound: "bing", volume: 0.8, desktop: false, ptCode: false };
+const TOOLS = [["tms", "TMS"], ["esk", "ESK"], ["relay", "Relay"], ["billing", "Billing"], ["ir", "IR Portal"]];   // Relay is home base
 
-const state = { ready: false, log: [], res: [], appts: [], apptNote: "", view: "main", me: load("kinnect.me"), dev: { ...DEV_DEFAULT, ...(load("kinnect.dev") || {}) }, alerted: new Set(), first: true, sent: new Map() };
+const state = { links: load("kinnect.links") || {}, ready: false, log: [], res: [], appts: [], apptNote: "", view: "main", me: load("kinnect.me"), dev: { ...DEV_DEFAULT, ...(load("kinnect.dev") || {}) }, alerted: new Set(), first: true, sent: new Map() };
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 function load(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } }
@@ -187,14 +188,14 @@ const mine = m => state.me && (state.me.role === "fd" ? m.to === FD : m.to === s
 const inbox = () => state.log.filter(mine).sort((a, b) => (!!a.ackBy - !!b.ackBy) || b.sent.localeCompare(a.sent));
 function desktopPop(m) {
   if (!state.dev.desktop || !("Notification" in window) || Notification.permission !== "granted") return;
-  try { new Notification("Kinnect", { body: `${SAYS[m.status] || m.status} (${m.from})`, tag: m.id }); } catch {}   // no patient code on a pop-up anyone walking by can read
+  try { new Notification("Kinnect Relay", { body: `${SAYS[m.status] || m.status} (${m.from})`, tag: m.id }); } catch {}   // no patient code on a pop-up anyone walking by can read
 }
 function alertNew() {
   const open = state.dev.receive ? inbox().filter(m => !m.ackBy) : [], fresh = open.filter(m => !state.alerted.has(m.id));
   fresh.forEach(m => state.alerted.add(m.id));
   if (fresh.length && !state.first) { playSound(); fresh.forEach(desktopPop); }
   state.first = false;
-  document.title = open.length ? `(${open.length}) Kinnect` : "Kinnect";
+  document.title = open.length ? `(${open.length}) Relay` : "Kinnect Relay";
   $("banner").innerHTML = open.length ? `<div class="banner red">${open.length} new message${open.length === 1 ? "" : "s"}</div>` : !state.dev.receive && state.me ? `<div class="banner">Notifications are off on this computer. Turn them on in Settings.</div>` : "";
 }
 
@@ -208,8 +209,14 @@ function render() {
   document.querySelectorAll("#main details").forEach((d, i) => { if (i < open.length) d.open = open[i]; });
   if (focus && $(focus)) { $(focus).focus(); try { if (sel != null) $(focus).setSelectionRange(sel, sel); } catch {} }
 }
+/* Kinnect tool bar: Relay links out to the other tools' workbooks (one way for now). Links are saved per computer, never in this public code. */
+function tools() {
+  return TOOLS.map(([k, l]) => k === "relay" ? `<span class="tool on" aria-current="page">${l}</span>`
+    : `<button class="tool${https(state.links[k]) ? "" : " unset"}" data-act="tool" data-k="${k}" title="${https(state.links[k]) ? `Open the ${l} workbook in a new tab` : `Add the ${l} workbook link in Settings`}">${l}</button>`).join("");
+}
 function paint() {
   const me = state.me;
+  $("tools").innerHTML = tools();
   $("who").innerHTML = me ? `<span class="who" data-act="who" title="Change who uses this computer">${esc(myName())}</span> <button class="sm" data-act="${state.view === "settings" ? "home" : "settings"}">${state.view === "settings" ? "Done" : "Settings"}</button>` : "";
   if (!state.ready) return $("main").innerHTML = `<section><p>This workbook doesn't have the Kinnect sheets yet.</p><button class="pri" data-act="setup">Set up workbook</button><p class="hint">Adds a "${LOG_SHEET}" sheet for messages and a "${RES_SHEET}" sheet for each clinician or device, with Zoom and Nudge AI links.</p></section>`;
   if (!me) return $("main").innerHTML = viewWho();
@@ -237,7 +244,11 @@ function viewSettings() {
       <label class="chk"><input type="checkbox" id="sDesk"${d.desktop ? " checked" : ""}> Desktop pop-ups</label>
       <div class="hint">${perm === "granted" ? "Allowed in this browser." : perm === "denied" ? "Blocked in this browser's site settings." : perm === "unsupported" ? "Not available here." : "Excel may block the permission prompt inside the pane; the banner and sound still work."} Pop-ups never show the patient code.</div>
       ${state.me.role === "fd" ? `<label class="chk"><input type="checkbox" id="sPt"${d.ptCode ? " checked" : ""}> Add the patient code to one-click alerts from the appointment list</label><div class="hint">Off by default, matching kin-nect: "Patient arrived" says nothing about who. Turn on only if clinicians need to tell patients apart.</div>` : ""}
-    </div></section>`;
+    </div>
+    <div class="group"><h2>Kinnect tools</h2><p class="sub">The workbook each button in the Kinnect bar opens. In Excel on the web, open the workbook and copy the address bar, or use Share > Copy link.</p>
+      ${TOOLS.filter(([k]) => k !== "relay").map(([k, l]) => `<label for="tl_${k}">${l} workbook</label><input id="tl_${k}" value="${esc(state.links[k] || "")}" placeholder="https://...sharepoint.com/...">`).join("")}
+      <div style="margin-top:6px"><button class="sm" data-act="saveTools">Save tool links</button></div>
+      <div class="hint">Saved on this computer only. Each workbook still needs its own add-in installed.</div></div></section>`;
 }
 function msgItem(m, canAck) {
   const who = mine(m) ? `from ${esc(m.from)}` : `to ${esc(m.to)}`;
@@ -322,6 +333,16 @@ const ACT = {
   ack: async el => { try { await store.ack(el.dataset.id, myName()); await refresh(); } catch (e) { fail(e); } },
   open: el => openUrl(el.dataset.url),
   testSound: () => playSound(),
+  tool: el => {
+    const k = el.dataset.k, u = state.links[k], name = (TOOLS.find(t => t[0] === k) || [])[1];
+    if (https(u)) return openUrl(u);
+    if (!state.me) return toast(`Choose who uses this computer first, then add the ${name} workbook link in Settings.`, true);
+    toast(`Add the ${name} workbook link here first.`, true); state.view = "settings"; render(); const x = $(`tl_${k}`); if (x) x.focus();
+  },
+  saveTools: () => {
+    const next = {}; for (const [k, l] of TOOLS) { if (k === "relay") continue; const v = $(`tl_${k}`).value.trim(); if (v && !https(v)) return toast(`The ${l} link must start with https://`, true); if (v) next[k] = v; }
+    state.links = next; save("kinnect.links", next); toast("Tool links saved."); render();
+  },
   links: async () => {
     const z = $("lnZoom").value.trim(), n = $("lnNudge").value.trim();
     if ((z && !https(z)) || (n && !https(n))) return toast("Links must start with https://", true);

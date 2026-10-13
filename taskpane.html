@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Kinnect</title>
+<title>Kinnect Relay</title>
 <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
 <style>
 :root{--ink:#1c2a33;--mute:#5f6f7a;--line:#dde3e8;--bg:#fff;--wash:#f3f6f8;--acc:#0f6e6e;--acc-w:#e2f1f1;--red:#b3261e;--red-w:#fbe9e7;--amb:#8a5a00;--amb-w:#fdf1d8}
@@ -41,13 +41,19 @@ section{padding:12px}
 .chk{display:flex;align-items:center;gap:6px;color:var(--ink);font-size:13px;margin-top:10px}
 .chk input{width:auto}
 details.group summary{cursor:pointer;margin-bottom:6px}
+.app{color:var(--acc)}
+.tools{display:flex;gap:2px;padding:4px 8px;background:var(--wash);border-bottom:1px solid var(--line);overflow-x:auto}
+.tool{border:0;background:none;padding:4px 8px;border-radius:4px;font-size:12px;white-space:nowrap;color:var(--ink)}
+.tool.on{background:var(--acc);color:#fff;font-weight:650}
+.tool.unset{color:var(--mute)}
 .hint{color:var(--mute);font-size:11.5px;margin-top:4px}
 #toast{position:fixed;left:12px;right:12px;bottom:12px;padding:8px 10px;border-radius:4px;background:var(--ink);color:#fff;display:none}
 #toast.err{background:var(--red)}
 </style>
 </head>
 <body>
-<header><h1>Kinnect</h1><span id="who"></span></header>
+<header><h1>Kinnect <span class="app">Relay</span></h1><span id="who"></span></header>
+<nav id="tools" class="tools" aria-label="Kinnect tools"></nav>
 <div id="banner"></div>
 <main id="main"><section class="none">Loading...</section></main>
 <div id="toast" role="status" aria-live="polite"></div>

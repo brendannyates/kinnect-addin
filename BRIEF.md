@@ -1,6 +1,6 @@
-# Kinnect: project brief
+# Kinnect Relay: project brief
 
-Version 0.2, October 2026. Owner: Brendan Yates.
+Version 0.3, October 2026. **Kinnect** is the umbrella for the MHS clinic tools (TMS, ESK, Relay, Billing, IR Portal); **Relay** is the part that carries notifications between the front desk and clinicians, and the home base for the rest. Owner: Brendan Yates.
 
 ## Why it exists
 
@@ -41,6 +41,7 @@ Everyone sees a **Sent today** list showing whether each message has been seen, 
 | Per-computer settings | Notify me on/off, sound, volume, pop-ups and (front desk only) whether one-click appointment alerts include the patient code. |
 | Acknowledgement | Every message records who clicked **Got it** and when. |
 | One-click setup | **Set up workbook** creates the **Kinnect Log** and **Resources** sheets and their tables. |
+| Kinnect tool bar | TMS · ESK · Relay · Billing · IR Portal across the top, with Relay as home. Each button opens that tool's workbook in a new tab, from links saved per computer in Settings (never in this public code). One way for now: the other tools don't link back yet. |
 | Demo mode | `taskpane.html?demo=1` runs on fictional data outside Excel, for training and testing. |
 
 ## Automations
@@ -69,7 +70,7 @@ These run without anyone clicking:
 - **LASFIR only.** The patient field accepts letters only (2 to 6, for short names) and rejects anything else. The pane reminds users not to put names or other details in the note, and notes are capped at 140 characters.
 - **Pop-ups stay generic.** Desktop pop-ups can be seen by anyone walking past, so they never include the patient code.
 - **No secrets.** There are no API keys, tokens or outside services.
-- **Safe links.** Only `https://` links can be saved or opened, which blocks `javascript:` and other unsafe schemes. Links open in a new tab with `noopener`.
+- **Safe links.** Only `https://` links (Zoom, Nudge AI and the tool-bar workbooks) can be saved or opened, which blocks `javascript:` and other unsafe schemes. Links open in a new tab with `noopener`.
 - **Escaped output.** Everything typed into the workbook is HTML-escaped before display, so a cell can't inject script into the pane.
 - **Spreadsheets can't be committed.** `.gitignore` blocks `.xlsx`, `.xls`, `.xlsm` and `.csv`, so a real workbook or NextGen export can't be committed by accident.
 - **Licensed sounds only.** Sound files go in a public repo, so only add sounds you have the right to publish.
