@@ -248,7 +248,7 @@ function tools() {
 /* The Ops Guide: search and browse the SOP index; nothing here is a copy of the SOP itself */
 function viewGuide() {
   const all = state.guide;
-  if (!all.length) return `<section><h2>The Ops Guide</h2><p class="none">No SOPs listed yet.</p><p class="hint">Paste the SOP index onto the "${GUIDE_SHEET}" sheet, under the headers ${GUIDE_COLS.join(", ")}. Each title opens the document in SharePoint, where its own permissions apply.</p></section>`;
+  if (!all.length) return `<section><h2>The Ops Guide</h2><p class="none">No SOPs listed yet.</p><p class="hint">Paste the SOP index onto the "${GUIDE_SHEET}" sheet, under the headers ${GUIDE_COLS.join(", ")}. Each title opens the document in SharePoint, where its own permissions apply.</p><button class="sm" data-act="setup">Add the ${GUIDE_SHEET} sheet if it's missing</button></section>`;
   const q = (state.gq || "").trim().toLowerCase(), words = q.split(/\s+/).filter(Boolean);
   const inCat = g => !state.gcat || g.cat === state.gcat, hit = g => words.every(w => [g.title, g.purpose, g.cat, g.section, g.aud, g.notes].join(" ").toLowerCase().includes(w));
   const cats = [...new Set(all.map(g => g.cat))].sort((a, b) => a.localeCompare(b)), list = all.filter(g => inCat(g) && hit(g));
