@@ -1,0 +1,13 @@
+{
+  "name": "kinnect-addin",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Front desk and clinician notifications task-pane add-in for Excel on the web",
+  "scripts": {
+    "certs": "npx office-addin-dev-certs install",
+    "start": "npx http-server . -S -C ~/.office-addin-dev-certs/localhost.crt -K ~/.office-addin-dev-certs/localhost.key -p 3000 -c-1",
+    "validate": "npx office-addin-manifest validate manifest.xml",
+    "check": "node --check taskpane.js",
+    "set-host": "node scripts/set-host.mjs"
+  }
+}
