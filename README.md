@@ -1,5 +1,7 @@
 # Kinnect (Excel on the web add-in)
 
+Full brief (uses, features, automations, safety): [BRIEF.md](BRIEF.md).
+
 Front desk and clinician notifications inside one shared workbook, plus one-click **Join Zoom** and **Open Nudge AI** for clinicians. Skeleton, version 0.1.
 
 ## How it works
