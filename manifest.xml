@@ -11,7 +11,7 @@
   xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides"
   xsi:type="TaskPaneApp">
   <Id>1c51df91-8ae0-4adf-af63-7478698cbf05</Id>
-  <Version>0.4.0.0</Version>
+  <Version>0.5.0.0</Version>
   <ProviderName>Radial</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
   <DisplayName DefaultValue="Kinnect Relay"/>

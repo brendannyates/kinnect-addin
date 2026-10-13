@@ -1,6 +1,6 @@
 # Kinnect Relay: project brief
 
-Version 0.4, October 2026. Owner: Brendan Yates.
+Version 0.5, October 2026. Owner: Brendan Yates.
 
 **Kinnect** is the umbrella for the MHS clinic tools: TMS, ESK, Relay, Billing and IR Portal. **Relay** is the part that carries notifications between the front desk and clinicians, and the home base the other tools are reached from. This brief covers Relay.
 
@@ -47,7 +47,8 @@ kin-nect's Teams delivery was never wired up in Floot, and it isn't in Relay eit
 | Shared tool links | The four workbook links live on the **Kinnect Tools** sheet, so they're set once for everyone using the workbook, either in Settings or by typing them on the sheet. Only `https://` links are accepted. |
 | Settings | This computer: notify me on/off, sound, volume, test, pop-ups, and (front desk only) patient code on one-click alerts. Kinnect tools: the four shared workbook links. |
 | Acknowledgement | Every message records who clicked **Got it** and when. |
-| One-click setup | **Set up workbook** creates the **Kinnect Log**, **Resources** and **Kinnect Tools** sheets and their tables. |
+| One-click setup | **Set up workbook** creates the **Kinnect Log**, **Resources**, **Kinnect Tools** and **Kinnect Guide** sheets and their tables. |
+| The Ops Guide | An intranet tab (**Ops Guide**, next to **Messages**) listing every SOP from The Ops Guide SharePoint site, grouped by category and section, with search and category filters. Each title opens the SOP in SharePoint, where its own permissions apply. Anyone can open it, even before choosing a role. The index lives on the **Kinnect Guide** sheet, so updating the guide means editing that sheet. |
 | Demo mode | `taskpane.html?demo=1` runs on fictional data outside Excel, for training and testing. |
 
 ## Automations
@@ -78,7 +79,7 @@ These run without anyone clicking:
 - **No identifier by default.** As in kin-nect, one-click alerts say only "Your patient has arrived." Adding a patient code is a deliberate choice: typed into the message form, or switched on per front-desk computer for appointment-list buttons.
 - **LASFIR only.** The patient field accepts letters only (2 to 6, for short names) and rejects anything else. The pane reminds users not to put names or other details in the note, and notes are capped at 140 characters.
 - **Pop-ups stay generic.** Desktop pop-ups can be seen by anyone walking past, so they never include the patient code.
-- **No internal links in public code.** Zoom, Nudge AI and workbook links are saved in the clinic workbook, never in the public repo. SharePoint links aren't patient data, but they are internal company information.
+- **No internal links in public code.** Zoom, Nudge AI, workbook and SOP links, and SOP titles, are saved in the clinic workbook, never in the public repo. The Ops Guide tab is an index, not a copy: the SOPs stay in SharePoint with their own permissions. SharePoint links aren't patient data, but they are internal company information.
 - **Safe links.** Only `https://` links can be saved or opened, which blocks `javascript:` and other unsafe schemes. Links open in a new tab with `noopener`.
 - **No secrets.** There are no API keys, tokens or outside services.
 - **Escaped output.** Everything typed into the workbook is HTML-escaped before display, so a cell can't inject script into the pane.
@@ -106,6 +107,7 @@ These run without anyone clicking:
 | Kinnect Log | `KinnectLog` | ID, Sent, From, To, Patient, Status, Room, Note, Acked by, Acked at |
 | Resources | `KinnectResources` | Resource, Zoom URL, Nudge URL, Room |
 | Kinnect Tools | `KinnectTools` | Tool (TMS, ESK, Billing, IR Portal), Workbook link |
+| Kinnect Guide | `KinnectGuide` | Category, Section, Title, Audience, Updated, Link, Purpose, Notes (the SOP index behind the Ops Guide tab) |
 | Appt List | (none) | The NextGen report, pasted as-is |
 
 Saved per computer, in the browser: who uses the computer, notify on/off, sound, volume, pop-ups, and the patient-code switch.
@@ -129,6 +131,7 @@ Saved per computer, in the browser: who uses the computer, notify on/off, sound,
 | 0.2 | Carried over kin-nect: resource cards for clinicians and devices, Patient arrived and Telehealth patient arrived, sound slots, per-computer settings, desktop pop-ups, duplicate guard, optional patient codes. The Clinicians sheet became **Resources**. |
 | 0.3 | Renamed to Kinnect Relay. Added the Kinnect bar linking out to TMS, ESK, Billing and IR Portal, with links saved per computer. |
 | 0.4 | Tool links moved into the workbook (**Kinnect Tools**), shared by everyone using it. |
+| 0.5 | Added the **Ops Guide** intranet tab: a searchable index of The Ops Guide SOPs, kept on the **Kinnect Guide** sheet. |
 
 ## Rollout
 
@@ -137,5 +140,6 @@ Saved per computer, in the browser: who uses the computer, notify on/off, sound,
 3. Upload `manifest.xml` in Excel on the web: Insert > Add-ins > Upload My Add-in.
 4. Open a copy of the clinic workbook, then click Home > Kinnect > Relay > **Set up workbook**.
 5. In Settings > Kinnect tools, add the TMS, ESK, Billing and IR Portal workbook links once.
-6. Pilot at one clinic with fictional patients first, then real visits.
-7. Changes go live when they merge to `main`. Re-upload the manifest only when `manifest.xml` changes.
+6. Paste the SOP index (`Documents\Kinnect Guide index.tsv`) onto the **Kinnect Guide** sheet, under the headers.
+7. Pilot at one clinic with fictional patients first, then real visits.
+8. Changes go live when they merge to `main`. Re-upload the manifest only when `manifest.xml` changes.

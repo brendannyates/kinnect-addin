@@ -9,6 +9,8 @@ const LOG_SHEET = "Kinnect Log", LOG_TABLE = "KinnectLog", RES_SHEET = "Resource
 const LOG_COLS = ["ID", "Sent", "From", "To", "Patient", "Status", "Room", "Note", "Acked by", "Acked at"];
 const RES_COLS = ["Resource", "Zoom URL", "Nudge URL", "Room"];
 const TOOLS_SHEET = "Kinnect Tools", TOOLS_TABLE = "KinnectTools", TOOLS_COLS = ["Tool", "Workbook link"];   // shared by everyone using this workbook
+/* The Ops Guide: an index of SOPs kept in the workbook (titles and SharePoint links are internal, so never in this public code); each opens in SharePoint */
+const GUIDE_SHEET = "Kinnect Guide", GUIDE_TABLE = "KinnectGuide", GUIDE_COLS = ["Category", "Section", "Title", "Audience", "Updated", "Link", "Purpose", "Notes"];
 const L = Object.fromEntries(LOG_COLS.map((c, i) => [c, i]));
 const FD = "Front desk", ALL = "All resources";
 const ARRIVED = "Patient arrived", TELE = "Telehealth patient arrived";
@@ -24,7 +26,7 @@ const TOOLS = [["tms", "TMS"], ["esk", "ESK"], ["relay", "Relay"], ["billing", "
 
 /* the tool links as workbook rows: one per tool other than Relay, in bar order */
 const toolRows = links => TOOLS.filter(([k]) => k !== "relay").map(([k, l]) => [l, links[k] || ""]);
-const state = { links: load("kinnect.links") || {}, ready: false, log: [], res: [], appts: [], apptNote: "", view: "main", me: load("kinnect.me"), dev: { ...DEV_DEFAULT, ...(load("kinnect.dev") || {}) }, alerted: new Set(), first: true, sent: new Map() };
+const state = { links: load("kinnect.links") || {}, guide: [], gq: "", gcat: "", ready: false, log: [], res: [], appts: [], apptNote: "", view: "main", me: load("kinnect.me"), dev: { ...DEV_DEFAULT, ...(load("kinnect.dev") || {}) }, alerted: new Set(), first: true, sent: new Map() };
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 function load(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } }
@@ -58,19 +60,19 @@ const excelStore = {
   async read() {
     let out = null;
     await Excel.run(async ctx => {
-      const lt = ctx.workbook.tables.getItemOrNullObject(LOG_TABLE), rt = ctx.workbook.tables.getItemOrNullObject(RES_TABLE), tt = ctx.workbook.tables.getItemOrNullObject(TOOLS_TABLE), aw = ctx.workbook.worksheets.getItemOrNullObject(APPT_SHEET);
+      const lt = ctx.workbook.tables.getItemOrNullObject(LOG_TABLE), rt = ctx.workbook.tables.getItemOrNullObject(RES_TABLE), tt = ctx.workbook.tables.getItemOrNullObject(TOOLS_TABLE), gt = ctx.workbook.tables.getItemOrNullObject(GUIDE_TABLE), aw = ctx.workbook.worksheets.getItemOrNullObject(APPT_SHEET);
       await ctx.sync();
       if (lt.isNullObject || rt.isNullObject) { out = { ready: false }; return; }
-      const lb = lt.getDataBodyRange(), rb = rt.getDataBodyRange(), tb = tt.isNullObject ? null : tt.getDataBodyRange(), au = aw.isNullObject ? null : aw.getUsedRangeOrNullObject(true);
-      lb.load("values"); rb.load("values"); if (tb) tb.load("values"); if (au) au.load("values");
+      const lb = lt.getDataBodyRange(), rb = rt.getDataBodyRange(), tb = tt.isNullObject ? null : tt.getDataBodyRange(), gb = gt.isNullObject ? null : gt.getDataBodyRange(), au = aw.isNullObject ? null : aw.getUsedRangeOrNullObject(true);
+      lb.load("values"); rb.load("values"); if (tb) tb.load("values"); if (gb) gb.load("values"); if (au) au.load("values");
       await ctx.sync();
-      out = { ready: true, log: lb.values, res: rb.values, tools: tb ? tb.values : null, appt: au && !au.isNullObject ? au.values : null };
+      out = { ready: true, log: lb.values, res: rb.values, tools: tb ? tb.values : null, guide: gb ? gb.values : null, appt: au && !au.isNullObject ? au.values : null };
     });
     return out;
   },
   async setup() {
     await Excel.run(async ctx => {
-      const want = [[LOG_SHEET, LOG_TABLE, LOG_COLS], [RES_SHEET, RES_TABLE, RES_COLS], [TOOLS_SHEET, TOOLS_TABLE, TOOLS_COLS, toolRows({})]];
+      const want = [[LOG_SHEET, LOG_TABLE, LOG_COLS], [RES_SHEET, RES_TABLE, RES_COLS], [TOOLS_SHEET, TOOLS_TABLE, TOOLS_COLS, toolRows({})], [GUIDE_SHEET, GUIDE_TABLE, GUIDE_COLS]];
       const tbl = want.map(([, t]) => ctx.workbook.tables.getItemOrNullObject(t)), ws = want.map(([s]) => ctx.workbook.worksheets.getItemOrNullObject(s));
       await ctx.sync();
       want.forEach(([s, t, cols, rows = []], i) => {
@@ -126,10 +128,13 @@ const mem = {   // fictional
   log: [["d1", `${today()} 08:52:10`, FD, "Dr. Rivera", "", ARRIVED, "", "", "", ""], ["d2", `${today()} 08:55:41`, "Dr. Rivera", FD, "", "Ready for next patient", "", "", FD, `${today()} 08:56:02`]],
   res: [["Dr. Rivera", "https://zoom.us/j/0000000000", "https://example.com/nudge", "2"], ["Dr. Okafor", "", "", "3"], ["MagVenture", "", "", "TMS 1"]],
   tools: [["TMS", ""], ["ESK", ""], ["Billing", ""], ["IR Portal", ""]],
+  guide: [["Front Office", "", "Sample: Patient check-in", "Front Office", "2026-06-17", "https://example.com/sop/check-in", "Steps for checking a patient in.", ""],
+    ["Front Office", "", "Sample: No-show and late cancel", "Care Navigator, Front Office", "2026-10-06", "https://example.com/sop/no-show", "How to document a no-show or late cancel.", ""],
+    ["Safety", "Crisis", "Sample: Patient in crisis", "", "2025-05-21", "https://example.com/sop/crisis", "What to do when a patient is in crisis.", ""]],
   appt: [["Appt Time", "Patient", "Provider", "Status"], [0.375, "Doe, Jane", "Dr. Rivera", "Scheduled"], [0.4167, "Roe, Rich", "Dr. Okafor", "Scheduled"]]
 };
 const demoStore = {
-  async read() { return { ready: true, log: mem.log.map(r => [...r]), res: mem.res.map(r => [...r]), tools: mem.tools.map(r => [...r]), appt: mem.appt }; },
+  async read() { return { ready: true, log: mem.log.map(r => [...r]), res: mem.res.map(r => [...r]), tools: mem.tools.map(r => [...r]), guide: mem.guide, appt: mem.appt }; },
   async setup() {}, async append(row) { mem.log.push(row); },
   async saveTools(links) { mem.tools = toolRows(links); },
   async ack(id, by) { const r = mem.log.find(r => r[L.ID] === id); r[L["Acked by"]] = by; r[L["Acked at"]] = stamp(); },
@@ -169,6 +174,9 @@ async function refresh() {
       // workbook links win; until anyone saves them, a computer's own links from version 0.3 still show
       const by = new Map((d.tools || []).map(r => [String(r[0]).trim(), String(r[1]).trim()])), wb = Object.fromEntries(TOOLS.map(([k, l]) => [k, by.get(l) || ""]).filter(([, u]) => u));
       state.links = Object.keys(wb).length ? wb : load("kinnect.links") || {};
+      const s = v => String(v ?? "").trim();
+      state.guide = (d.guide || []).map(r => ({ cat: s(r[0]) || "Other", section: s(r[1]), title: s(r[2]), aud: s(r[3]), updated: typeof r[4] === "number" ? when(r[4]).slice(0, 10) : s(r[4]), link: s(r[5]), purpose: s(r[6]), notes: s(r[7]) }))
+        .filter(g => g.title);
     }
     render(); alertNew();
   } catch (e) { fail(e); }
@@ -237,11 +245,32 @@ function tools() {
   return TOOLS.map(([k, l]) => k === "relay" ? `<span class="tool on" aria-current="page">${l}</span>`
     : `<button class="tool${https(state.links[k]) ? "" : " unset"}" data-act="tool" data-k="${k}" title="${https(state.links[k]) ? `Open the ${l} workbook in a new tab` : `Add the ${l} workbook link in Settings`}">${l}</button>`).join("");
 }
+/* The Ops Guide: search and browse the SOP index; nothing here is a copy of the SOP itself */
+function viewGuide() {
+  const all = state.guide;
+  if (!all.length) return `<section><h2>The Ops Guide</h2><p class="none">No SOPs listed yet.</p><p class="hint">Paste the SOP index onto the "${GUIDE_SHEET}" sheet, under the headers ${GUIDE_COLS.join(", ")}. Each title opens the document in SharePoint, where its own permissions apply.</p></section>`;
+  const q = (state.gq || "").trim().toLowerCase(), words = q.split(/\s+/).filter(Boolean);
+  const inCat = g => !state.gcat || g.cat === state.gcat, hit = g => words.every(w => [g.title, g.purpose, g.cat, g.section, g.aud, g.notes].join(" ").toLowerCase().includes(w));
+  const cats = [...new Set(all.map(g => g.cat))].sort((a, b) => a.localeCompare(b)), list = all.filter(g => inCat(g) && hit(g));
+  const count = c => all.filter(g => (!c || g.cat === c) && hit(g)).length;
+  const chip = (c, l) => `<button class="sm${(state.gcat || "") === c ? " pri" : ""}" data-act="gcat" data-c="${esc(c)}">${esc(l)} <span class="n">${count(c)}</span></button>`;
+  const site = (all.map(g => (g.link.match(/^https:\/\/[^/]+\/sites\/[^/]+/i) || [])[0]).find(Boolean));
+  const groups = new Map(); list.slice().sort((a, b) => a.cat.localeCompare(b.cat) || a.section.localeCompare(b.section) || a.title.localeCompare(b.title)).forEach(g => { const k = g.cat + (g.section ? ` › ${g.section}` : ""); (groups.get(k) || groups.set(k, []).get(k)).push(g); });
+  const item = g => `<div class="item">${https(g.link) ? `<button class="linkbtn" data-act="open" data-url="${esc(g.link)}">${esc(g.title)}</button>` : `<b>${esc(g.title)}</b> <span class="chip">no link</span>`}
+    ${g.purpose ? `<div class="sub">${esc(g.purpose)}</div>` : ""}<div class="sub">${[g.aud, g.updated && `Updated ${g.updated}`].filter(Boolean).map(esc).join(" · ")}</div>${g.notes ? `<div class="hint">${esc(g.notes)}</div>` : ""}</div>`;
+  return `<section><h2>The Ops Guide<span class="n">${all.length} SOPs</span></h2>
+    <input id="gQ" type="search" placeholder="Search SOPs, e.g. no-show, Luma, crisis" aria-label="Search SOPs" value="${esc(state.gq || "")}">
+    <div style="margin:6px 0 10px">${chip("", "All")}${cats.map(c => chip(c, c)).join("")}</div>
+    ${[...groups].map(([k, gs]) => `<div class="group"><h2>${esc(k)}<span class="n">${gs.length}</span></h2>${gs.map(item).join("")}</div>`).join("") || `<div class="none">No SOPs match "${esc(state.gq)}".</div>`}
+    ${site ? `<p class="hint"><button class="linkbtn" data-act="open" data-url="${esc(site)}">Open The Ops Guide in SharePoint</button> for everything else on the site.</p>` : ""}</section>`;
+}
 function paint() {
   const me = state.me;
   $("tools").innerHTML = tools();
+  $("views").innerHTML = state.ready ? `<button class="vw${state.view === "guide" ? "" : " on"}" data-act="home">Messages</button><button class="vw${state.view === "guide" ? " on" : ""}" data-act="guide">Ops Guide</button>` : "";
   $("who").innerHTML = me ? `<span class="who" data-act="who" title="Change who uses this computer">${esc(myName())}</span> <button class="sm" data-act="${state.view === "settings" ? "home" : "settings"}">${state.view === "settings" ? "Done" : "Settings"}</button>` : "";
   if (!state.ready) return $("main").innerHTML = `<section><p>This workbook doesn't have the Kinnect sheets yet.</p><button class="pri" data-act="setup">Set up workbook</button><p class="hint">Adds a "${LOG_SHEET}" sheet for messages and a "${RES_SHEET}" sheet for each clinician or device, with Zoom and Nudge AI links.</p></section>`;
+  if (state.view === "guide") return $("main").innerHTML = viewGuide();   // anyone can read the guide, even before picking a role
   if (!me) return $("main").innerHTML = viewWho();
   $("main").innerHTML = state.view === "settings" ? viewSettings() : me.role === "fd" ? viewFD() : viewRes(me.name);
 }
@@ -345,6 +374,8 @@ const ACT = {
   who: () => { state.me = null; state.view = "main"; save("kinnect.me", null); render(); },
   settings: () => { state.view = "settings"; render(); Promise.all(SOUNDS.map(findSound)).then(() => state.view === "settings" && render()); },
   home: () => { state.view = "main"; render(); },
+  guide: () => { state.view = "guide"; render(); },
+  gcat: el => { state.gcat = el.dataset.c; render(); },
   beFD: () => { state.me = { role: "fd" }; save("kinnect.me", state.me); state.first = true; refresh(); },
   beRes: async () => {
     const name = ($("whoRes").value || $("whoNew").value).trim(); if (!name) return toast("Choose or type a name.", true);
@@ -373,6 +404,7 @@ const ACT = {
   }
 };
 document.addEventListener("click", e => { const el = e.target.closest("[data-act]"); if (el && ACT[el.dataset.act]) ACT[el.dataset.act](el); });
+document.addEventListener("input", e => { if (e.target.id === "gQ") { state.gq = e.target.value; render(); } });
 document.addEventListener("change", async e => {
   const id = e.target.id;
   if (id === "sRecv") { setDev({ receive: e.target.checked }); alertNew(); }
