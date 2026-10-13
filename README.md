@@ -2,7 +2,7 @@
 
 Full brief (uses, features, automations, safety): [BRIEF.md](BRIEF.md).
 
-Front desk and resource notifications inside one shared workbook, plus one-click **Join Zoom** and **Open Nudge AI** for clinicians. A resource is a clinician or a device (MagVenture, BrainsWay). Carries over the Floot kin-nect app. Version 0.3.
+Front desk and resource notifications inside one shared workbook, plus one-click **Join Zoom** and **Open Nudge AI** for clinicians. A resource is a clinician or a device (MagVenture, BrainsWay). Carries over the Floot kin-nect app. Version 0.4.
 
 ## How it works
 

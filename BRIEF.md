@@ -1,22 +1,24 @@
 # Kinnect Relay: project brief
 
-Version 0.3, October 2026. **Kinnect** is the umbrella for the MHS clinic tools (TMS, ESK, Relay, Billing, IR Portal); **Relay** is the part that carries notifications between the front desk and clinicians, and the home base for the rest. Owner: Brendan Yates.
+Version 0.4, October 2026. Owner: Brendan Yates.
+
+**Kinnect** is the umbrella for the MHS clinic tools: TMS, ESK, Relay, Billing and IR Portal. **Relay** is the part that carries notifications between the front desk and clinicians, and the home base the other tools are reached from. This brief covers Relay.
 
 ## Why it exists
 
-A patient who arrives at the front desk shouldn't have to wait because their clinician didn't hear about it. A clinician running a telehealth visit shouldn't be hunting through bookmarks for a Zoom room or the Nudge AI scribe. Kinnect is a single pane where the front desk and each **resource** (a clinician or a device such as MagVenture or BrainsWay) tell each other what's happening with each visit, and where clinicians launch the two tools they open every visit.
+A patient who arrives at the front desk shouldn't have to wait because their clinician didn't hear about it. A clinician running a telehealth visit shouldn't be hunting through bookmarks for a Zoom room or the Nudge AI scribe. Relay is a single pane where the front desk and each **resource** (a clinician, or a device such as MagVenture or BrainsWay) tell each other what's happening with each visit. Clinicians launch the two tools they open every visit from it, and everyone can jump to the other Kinnect workbooks.
 
 ## Where it came from
 
-Kinnect began as **kin-nect** in Floot: one-click "patient arrived" alerts per resource, a per-device "notify me" setting, four notification sounds (bing, boom, bop, bow) and browser pop-ups. This add-in carries those features into Excel on the web, in a workbook the clinic shares. That keeps every message inside Microsoft 365, which MHS already covers for patient information, and avoids a separate vendor, login or install.
+Relay began as **kin-nect** in Floot. kin-nect had one-click "patient arrived" alerts per resource, a per-device "notify me" setting, four notification sounds (bing, boom, bop, bow) and browser pop-ups. Relay carries those features into Excel on the web, in a workbook the clinic shares. That keeps every message inside Microsoft 365, which MHS already covers for patient information, and avoids a separate vendor, login or install.
 
-kin-nect's Teams delivery was never wired up in Floot, and it isn't in this version either. **IT Support: Weekly Connect**, the other app in the same Floot account, is a separate product and is deliberately not part of Kinnect.
+kin-nect's Teams delivery was never wired up in Floot, and it isn't in Relay either. **IT Support: Weekly Connect**, the other app in the same Floot account, is a separate product and is deliberately not part of Kinnect.
 
 ## Who uses it and how
 
 **Front desk**
 - Sees a card for every resource with **Patient arrived** and **Telehealth patient arrived**. One click notifies that resource, with no patient details.
-- Works down today's appointment list, generated from the NextGen report pasted on **Appt List**. Each visit has **Arrived**, **Telehealth**, **Roomed**, **Running late** and **No-show** buttons. Roomed fills in the resource's usual room.
+- Works down today's appointment list, built from the NextGen report pasted on **Appt List**. Each visit has **Arrived**, **Telehealth**, **Roomed**, **Running late** and **No-show** buttons, and shows the last status sent for it. Roomed fills in the resource's usual room.
 - Sends anything else (Cancelled, Checked out, a short message) to one resource or to **All resources**, adding a LASFIR code only when it's needed.
 - Gets requests from resources in an inbox and clicks **Got it** to confirm.
 
@@ -25,7 +27,9 @@ kin-nect's Teams delivery was never wired up in Floot, and it isn't in this vers
 - Tell the front desk **Ready for next patient**, **Send patient back** or **Ready for checkout** in one click, or send Need help, Running behind or a short message.
 - See "Your patient has arrived." or "Your telehealth patient has arrived." in their inbox and click **Got it**.
 
-Everyone sees a **Sent today** list showing whether each message has been seen, and by whom.
+**Everyone**
+- Sees a **Sent today** list showing whether each message has been seen, and by whom.
+- Uses the **Kinnect bar** (TMS · ESK · Relay · Billing · IR Portal) to open another tool's workbook in a new tab.
 
 ## Features
 
@@ -34,30 +38,35 @@ Everyone sees a **Sent today** list showing whether each message has been seen, 
 | Resource cards | One-click Patient arrived and Telehealth patient arrived per clinician or device, carried over from kin-nect. |
 | Role picker | First run asks "Front desk, or which clinician or device?" and remembers the answer on that computer. Click the name at the top to switch. |
 | Self-service resources | A clinician or device that isn't listed can be added from the pane, and goes onto the **Resources** sheet. |
-| Personal launch links | Each resource stores a Zoom room link and a Nudge AI link once. The buttons stay disabled until a link is saved. |
+| Personal launch links | Each resource saves a Zoom room link and a Nudge AI link once, under **My links**. The buttons stay disabled until a link is saved. |
 | Today's appointments | Read from the pasted NextGen report. Headers are found by name, so column order doesn't matter. Cancelled visits and other days are left out, and the rest are sorted by time. |
-| Notification sounds | Each computer picks bing, boom, bop, bow, a built-in chime or no sound, sets the volume, and can play a test. |
+| Optional patient code | Any message can carry a LASFIR code. One-click appointment buttons include it only if that front-desk computer turns it on. |
+| Notification sounds | Each computer picks bing, boom, bop, bow, a built-in chime or no sound, sets the volume, and can play a test. Settings shows which sound files were found. |
 | Desktop pop-ups | Optional, per computer, wherever the browser allows them. They never show the patient code. |
-| Per-computer settings | Notify me on/off, sound, volume, pop-ups and (front desk only) whether one-click appointment alerts include the patient code. |
+| Kinnect bar | TMS · ESK · Relay · Billing · IR Portal across the top, with Relay highlighted as home. Each button opens that tool's workbook in a new tab. A tool without a link is greyed out, and clicking it goes straight to the box in Settings to add one. |
+| Shared tool links | The four workbook links live on the **Kinnect Tools** sheet, so they're set once for everyone using the workbook, either in Settings or by typing them on the sheet. Only `https://` links are accepted. |
+| Settings | This computer: notify me on/off, sound, volume, test, pop-ups, and (front desk only) patient code on one-click alerts. Kinnect tools: the four shared workbook links. |
 | Acknowledgement | Every message records who clicked **Got it** and when. |
 | One-click setup | **Set up workbook** creates the **Kinnect Log**, **Resources** and **Kinnect Tools** sheets and their tables. |
-| Kinnect tool bar | TMS · ESK · Relay · Billing · IR Portal across the top, with Relay as home. Each button opens that tool's workbook in a new tab, from links saved in the workbook on the **Kinnect Tools** sheet, so everyone using it shares them. Set them once in Settings or type them on the sheet (never in this public code). One way for now: the other tools don't link back yet. |
 | Demo mode | `taskpane.html?demo=1` runs on fictional data outside Excel, for training and testing. |
 
 ## Automations
 
 These run without anyone clicking:
 
-- **Live updates.** The pane listens for changes to the message table, including edits from other people in the shared workbook, and re-reads within about half a second. A refresh every 10 seconds catches anything the change events miss. Polling pauses while the pane is hidden.
-- **Alerts.** A new, unacknowledged message to you plays your chosen sound, shows a red "N new messages" banner, puts the count in the browser tab title, e.g. "(2) Kinnect", and, if turned on, shows a desktop pop-up. These clear when you click **Got it**.
-- **Sound fallback.** If a chosen sound file is missing or slow to load, the built-in chime plays instead.
+- **Live updates.** The pane listens for changes to the message table, including edits from other people in the shared workbook, and re-reads within about half a second. A refresh every 10 seconds catches anything the change events miss, including tool-link edits. Polling pauses while the pane is hidden.
+- **Alerts.** A new, unacknowledged message to you plays your chosen sound, shows a red "N new messages" banner and puts the count in the browser tab title, e.g. "(2) Relay". If turned on, it also shows a desktop pop-up. These clear when you click **Got it**.
+- **Sound fallback.** If a chosen sound file is missing or slow to load, the built-in chime plays instead. A slow file is checked again on the next alert; a missing one is checked again after the pane reloads.
+- **Sound unlock.** The first click anywhere in the pane unlocks audio, which browsers require before playing sound.
 - **Duplicate guard.** The same alert to the same resource within 5 seconds, from a double click or two people at once, is sent once ("Already notified moments ago"). This is kin-nect's debounce.
-- **LASFIR conversion.** Names in the NextGen report, in "Last, First" or "First Last" form, are turned into LASFIR codes on screen. Names are never written to the log.
+- **LASFIR conversion.** Names in the NextGen report, in "Last, First" or "First Last" form, are turned into LASFIR codes on screen. Short names give shorter codes (Ng, Al becomes NGAL). Names are never written to the log.
 - **Appointment filtering.** Only today's visits that aren't cancelled are listed, sorted by time.
 - **Room prefill.** **Roomed** fills in the resource's default room from the Resources sheet.
+- **Tool-link carry-over.** Links a computer saved in version 0.3, which stored them per computer, keep showing until someone saves the shared ones. After that the workbook's links take over and the local copy is cleared.
 - **Typing is kept.** The background refresh doesn't clear a half-typed message or close an open section.
 
 **Not built yet** (candidates, not promises):
+- links back to Relay from TMS, ESK, Billing and IR Portal (one-way for now, by decision)
 - Teams delivery through Power Automate, which kin-nect also had planned
 - a daily archive of older log rows
 - a Power Automate flow that refreshes Appt List from NextGen automatically
@@ -69,13 +78,14 @@ These run without anyone clicking:
 - **No identifier by default.** As in kin-nect, one-click alerts say only "Your patient has arrived." Adding a patient code is a deliberate choice: typed into the message form, or switched on per front-desk computer for appointment-list buttons.
 - **LASFIR only.** The patient field accepts letters only (2 to 6, for short names) and rejects anything else. The pane reminds users not to put names or other details in the note, and notes are capped at 140 characters.
 - **Pop-ups stay generic.** Desktop pop-ups can be seen by anyone walking past, so they never include the patient code.
+- **No internal links in public code.** Zoom, Nudge AI and workbook links are saved in the clinic workbook, never in the public repo. SharePoint links aren't patient data, but they are internal company information.
+- **Safe links.** Only `https://` links can be saved or opened, which blocks `javascript:` and other unsafe schemes. Links open in a new tab with `noopener`.
 - **No secrets.** There are no API keys, tokens or outside services.
-- **Safe links.** Only `https://` links (Zoom, Nudge AI and the tool-bar workbooks) can be saved or opened, which blocks `javascript:` and other unsafe schemes. Links open in a new tab with `noopener`.
 - **Escaped output.** Everything typed into the workbook is HTML-escaped before display, so a cell can't inject script into the pane.
 - **Spreadsheets can't be committed.** `.gitignore` blocks `.xlsx`, `.xls`, `.xlsm` and `.csv`, so a real workbook or NextGen export can't be committed by accident.
 - **Licensed sounds only.** Sound files go in a public repo, so only add sounds you have the right to publish.
 - **Audit trail.** Every message keeps who sent it, to whom, when, who acknowledged it and when.
-- **Access follows the workbook.** Anyone who can open the workbook can read the log, so share it only with clinic staff, invite-only.
+- **Access follows the workbook.** Anyone who can open the workbook can read the log, and anyone who can edit it can change the resources and tool links. Share it only with clinic staff, invite-only.
 
 ## Known limits
 
@@ -84,6 +94,7 @@ These run without anyone clicking:
 - Excel may block the desktop pop-up permission prompt inside the pane. When it does, the banner and sound still work.
 - "Who am I" is set per computer and is not an identity check. Anyone at a computer can choose any role. The workbook's own sharing is the real access control.
 - One **Got it** marks a message seen for everyone it was sent to.
+- The Kinnect bar opens a workbook; it doesn't open that workbook's add-in. Each workbook still needs its own add-in installed.
 - The log grows without limit; the pane shows only today's rows.
 - The appointment header names are guesses until the NextGen report is built.
 - **Not yet run in Excel on the web.** Tested only in a headless browser with fictional data.
@@ -94,14 +105,37 @@ These run without anyone clicking:
 |---|---|---|
 | Kinnect Log | `KinnectLog` | ID, Sent, From, To, Patient, Status, Room, Note, Acked by, Acked at |
 | Resources | `KinnectResources` | Resource, Zoom URL, Nudge URL, Room |
-| Kinnect Tools | `KinnectTools` | Tool, Workbook link (TMS, ESK, Billing, IR Portal) |
+| Kinnect Tools | `KinnectTools` | Tool (TMS, ESK, Billing, IR Portal), Workbook link |
 | Appt List | (none) | The NextGen report, pasted as-is |
+
+Saved per computer, in the browser: who uses the computer, notify on/off, sound, volume, pop-ups, and the patient-code switch.
+
+## Where things live
+
+| What | Where |
+|---|---|
+| Code | GitHub `brendannyates/kinnect-addin` (public; no PHI) |
+| Live pane | `https://brendannyates.github.io/kinnect-addin/taskpane.html`, served from `main` |
+| Demo | `taskpane.html?demo=1` |
+| Sounds | `assets/sounds/` (`bing`, `boom`, `bop`, `bow`) |
+| Ribbon | Home > Kinnect > **Relay** (add-in name: Kinnect Relay) |
+| Floot original | `Downloads\kinnect-all-files_1.zip` with `00-KINNECT-INDEX.md` |
+
+## Version history
+
+| Version | What changed |
+|---|---|
+| 0.1 | Skeleton: front desk and clinician messages, acknowledgements, Zoom and Nudge AI launch, NextGen appointment list, LASFIR-only patients. |
+| 0.2 | Carried over kin-nect: resource cards for clinicians and devices, Patient arrived and Telehealth patient arrived, sound slots, per-computer settings, desktop pop-ups, duplicate guard, optional patient codes. The Clinicians sheet became **Resources**. |
+| 0.3 | Renamed to Kinnect Relay. Added the Kinnect bar linking out to TMS, ESK, Billing and IR Portal, with links saved per computer. |
+| 0.4 | Tool links moved into the workbook (**Kinnect Tools**), shared by everyone using it. |
 
 ## Rollout
 
 1. Download the four sounds from kin-nect's Settings page and save them in `assets/sounds/` as `bing`, `boom`, `bop` and `bow`, each as `.mp3`, `.wav`, `.ogg` or `.m4a`.
 2. Build the NextGen report with columns for appointment date, appointment time, patient, provider/resource and status. Match `APPT_HDR` in `taskpane.js` to its headers.
 3. Upload `manifest.xml` in Excel on the web: Insert > Add-ins > Upload My Add-in.
-4. Open a copy of the clinic workbook, then click Home > Kinnect > **Set up workbook**.
-5. Pilot at one clinic with fictional patients first, then real visits.
-6. Changes go live when they merge to `main`. Re-upload the manifest only when `manifest.xml` changes.
+4. Open a copy of the clinic workbook, then click Home > Kinnect > Relay > **Set up workbook**.
+5. In Settings > Kinnect tools, add the TMS, ESK, Billing and IR Portal workbook links once.
+6. Pilot at one clinic with fictional patients first, then real visits.
+7. Changes go live when they merge to `main`. Re-upload the manifest only when `manifest.xml` changes.
