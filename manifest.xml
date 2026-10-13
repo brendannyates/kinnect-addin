@@ -11,11 +11,11 @@
   xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides"
   xsi:type="TaskPaneApp">
   <Id>1c51df91-8ae0-4adf-af63-7478698cbf05</Id>
-  <Version>0.1.0.0</Version>
+  <Version>0.2.0.0</Version>
   <ProviderName>Radial</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
   <DisplayName DefaultValue="Kinnect"/>
-  <Description DefaultValue="Front desk and clinician notifications in a shared workbook, with one-click Zoom and Nudge AI launch for clinicians."/>
+  <Description DefaultValue="Front desk and resource (clinician or device) arrival notifications in a shared workbook, with sounds and one-click Zoom and Nudge AI launch."/>
   <IconUrl DefaultValue="https://brendannyates.github.io/kinnect-addin/assets/icon-32.png"/>
   <HighResolutionIconUrl DefaultValue="https://brendannyates.github.io/kinnect-addin/assets/icon-64.png"/>
   <SupportUrl DefaultValue="https://brendannyates.github.io/kinnect-addin/README.md"/>

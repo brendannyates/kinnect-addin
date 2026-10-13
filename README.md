@@ -2,22 +2,23 @@
 
 Full brief (uses, features, automations, safety): [BRIEF.md](BRIEF.md).
 
-Front desk and clinician notifications inside one shared workbook, plus one-click **Join Zoom** and **Open Nudge AI** for clinicians. Skeleton, version 0.1.
+Front desk and resource notifications inside one shared workbook, plus one-click **Join Zoom** and **Open Nudge AI** for clinicians. A resource is a clinician or a device (MagVenture, BrainsWay). Carries over the Floot kin-nect app. Version 0.2.
 
 ## How it works
 
-- **Messages** are rows in the `KinnectLog` table on the **Kinnect Log** sheet. Anyone with the pane open sees new ones within about 10 seconds, with a chime, a red banner and a count in the tab title, until they click **Got it**.
-- **Clinician links** (Zoom room, Nudge AI, default room) are rows in `KinnectClinicians` on the **Clinicians** sheet. Clinicians can edit their own links from the pane. Only `https://` links open.
-- **Today's appointments** come from the NextGen report pasted on the **Appt List** sheet. The pane finds the header row by name (`APPT_HDR` in `taskpane.js`) and lists today's non-cancelled visits with Arrived, Roomed, Running late and No-show buttons.
-- **Who am I** (front desk or a clinician's name) is saved per computer in the browser, not in the workbook.
+- **Messages** are rows in the `KinnectLog` table on the **Kinnect Log** sheet. Anyone with the pane open sees new ones within seconds, with their chosen sound, a red banner, a count in the tab title and an optional desktop pop-up, until they click **Got it**.
+- **Resources** (name, Zoom room, Nudge AI, default room) are rows in `KinnectResources` on the **Resources** sheet. Clinicians can edit their own links from the pane. Only `https://` links open.
+- **Today's appointments** come from the NextGen report pasted on the **Appt List** sheet. The pane finds the header row by name (`APPT_HDR` in `taskpane.js`).
+- **Sounds** are `assets/sounds/bing|boom|bop|bow` (`.mp3`, `.wav`, `.ogg` or `.m4a`). A missing file falls back to a built-in chime.
+- **Per-computer settings** (who I am, notify on/off, sound, volume, pop-ups, patient code on one-click alerts) are saved in the browser, not the workbook.
 
-Patients appear by **LASFIR code only** (last three + first three letters). Names from the report are converted in the pane and never written to the log. The hosted files contain no PHI; `.gitignore` blocks spreadsheets and CSVs.
+One-click alerts carry no patient identifier. A LASFIR code (last three + first three letters) is optional. Names from the report are converted in the pane and never written to the log. The hosted files contain no PHI; `.gitignore` blocks spreadsheets and CSVs.
 
-## Limits of the skeleton
+## Limits
 
-- Alerts only show while the pane is open in Excel on the web. There are no OS pop-ups.
-- One front-desk or clinician "Got it" marks a message seen for everyone it was sent to (including **All clinicians**).
-- The log keeps growing; the pane only shows today's rows. An archive step is still to do.
+- Alerts only show while the pane is open in Excel on the web. Sound needs one click in the pane first.
+- One "Got it" marks a message seen for everyone it was sent to (including **All resources**).
+- The log keeps growing; the pane only shows today's rows.
 - `APPT_HDR` is a guess until the NextGen report exists.
 
 ## Try it
