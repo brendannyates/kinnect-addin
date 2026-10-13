@@ -8,6 +8,7 @@ const DEMO = /[?&]demo\b/.test(location.search);
 const LOG_SHEET = "Kinnect Log", LOG_TABLE = "KinnectLog", RES_SHEET = "Resources", RES_TABLE = "KinnectResources", APPT_SHEET = "Appt List";
 const LOG_COLS = ["ID", "Sent", "From", "To", "Patient", "Status", "Room", "Note", "Acked by", "Acked at"];
 const RES_COLS = ["Resource", "Zoom URL", "Nudge URL", "Room"];
+const TOOLS_SHEET = "Kinnect Tools", TOOLS_TABLE = "KinnectTools", TOOLS_COLS = ["Tool", "Workbook link"];   // shared by everyone using this workbook
 const L = Object.fromEntries(LOG_COLS.map((c, i) => [c, i]));
 const FD = "Front desk", ALL = "All resources";
 const ARRIVED = "Patient arrived", TELE = "Telehealth patient arrived";
@@ -21,6 +22,8 @@ const SOUNDS = ["bing", "boom", "bop", "bow"], SOUND_EXTS = ["mp3", "wav", "ogg"
 const DEV_DEFAULT = { receive: true, sound: "bing", volume: 0.8, desktop: false, ptCode: false };
 const TOOLS = [["tms", "TMS"], ["esk", "ESK"], ["relay", "Relay"], ["billing", "Billing"], ["ir", "IR Portal"]];   // Relay is home base
 
+/* the tool links as workbook rows: one per tool other than Relay, in bar order */
+const toolRows = links => TOOLS.filter(([k]) => k !== "relay").map(([k, l]) => [l, links[k] || ""]);
 const state = { links: load("kinnect.links") || {}, ready: false, log: [], res: [], appts: [], apptNote: "", view: "main", me: load("kinnect.me"), dev: { ...DEV_DEFAULT, ...(load("kinnect.dev") || {}) }, alerted: new Set(), first: true, sent: new Map() };
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -55,25 +58,25 @@ const excelStore = {
   async read() {
     let out = null;
     await Excel.run(async ctx => {
-      const lt = ctx.workbook.tables.getItemOrNullObject(LOG_TABLE), rt = ctx.workbook.tables.getItemOrNullObject(RES_TABLE), aw = ctx.workbook.worksheets.getItemOrNullObject(APPT_SHEET);
+      const lt = ctx.workbook.tables.getItemOrNullObject(LOG_TABLE), rt = ctx.workbook.tables.getItemOrNullObject(RES_TABLE), tt = ctx.workbook.tables.getItemOrNullObject(TOOLS_TABLE), aw = ctx.workbook.worksheets.getItemOrNullObject(APPT_SHEET);
       await ctx.sync();
       if (lt.isNullObject || rt.isNullObject) { out = { ready: false }; return; }
-      const lb = lt.getDataBodyRange(), rb = rt.getDataBodyRange(), au = aw.isNullObject ? null : aw.getUsedRangeOrNullObject(true);
-      lb.load("values"); rb.load("values"); if (au) au.load("values");
+      const lb = lt.getDataBodyRange(), rb = rt.getDataBodyRange(), tb = tt.isNullObject ? null : tt.getDataBodyRange(), au = aw.isNullObject ? null : aw.getUsedRangeOrNullObject(true);
+      lb.load("values"); rb.load("values"); if (tb) tb.load("values"); if (au) au.load("values");
       await ctx.sync();
-      out = { ready: true, log: lb.values, res: rb.values, appt: au && !au.isNullObject ? au.values : null };
+      out = { ready: true, log: lb.values, res: rb.values, tools: tb ? tb.values : null, appt: au && !au.isNullObject ? au.values : null };
     });
     return out;
   },
   async setup() {
     await Excel.run(async ctx => {
-      const want = [[LOG_SHEET, LOG_TABLE, LOG_COLS], [RES_SHEET, RES_TABLE, RES_COLS]];
+      const want = [[LOG_SHEET, LOG_TABLE, LOG_COLS], [RES_SHEET, RES_TABLE, RES_COLS], [TOOLS_SHEET, TOOLS_TABLE, TOOLS_COLS, toolRows({})]];
       const tbl = want.map(([, t]) => ctx.workbook.tables.getItemOrNullObject(t)), ws = want.map(([s]) => ctx.workbook.worksheets.getItemOrNullObject(s));
       await ctx.sync();
-      want.forEach(([s, t, cols], i) => {
+      want.forEach(([s, t, cols, rows = []], i) => {
         if (!tbl[i].isNullObject) return;
         const sh = ws[i].isNullObject ? ctx.workbook.worksheets.add(s) : ws[i];
-        const hdr = sh.getRange("A1").getResizedRange(0, cols.length - 1); hdr.values = [cols];
+        const hdr = sh.getRange("A1").getResizedRange(rows.length, cols.length - 1); hdr.values = [cols, ...rows];
         const nt = sh.tables.add(hdr, true); nt.name = t;
         if (t === LOG_TABLE) nt.getDataBodyRange().numberFormat = [cols.map(() => "@")];   // keep IDs and times as typed text
         hdr.format.autofitColumns();
@@ -100,6 +103,21 @@ const excelStore = {
       await ctx.sync();
     });
   },
+  async saveTools(links) {
+    await Excel.run(async ctx => {
+      const t = ctx.workbook.tables.getItemOrNullObject(TOOLS_TABLE), ws = ctx.workbook.worksheets.getItemOrNullObject(TOOLS_SHEET); await ctx.sync();
+      if (t.isNullObject) {   // a workbook set up before the shared links existed
+        const rows = toolRows(links), sh = ws.isNullObject ? ctx.workbook.worksheets.add(TOOLS_SHEET) : ws, r = sh.getRange("A1").getResizedRange(rows.length, 1);
+        r.values = [TOOLS_COLS, ...rows]; sh.tables.add(r, true).name = TOOLS_TABLE; r.format.autofitColumns(); return ctx.sync();
+      }
+      const b = t.getDataBodyRange(); b.load("values"); await ctx.sync();
+      for (const [name, url] of toolRows(links)) {
+        const i = b.values.findIndex(r => String(r[0]).trim() === name);
+        if (i >= 0) b.getCell(i, 1).values = [[url]]; else t.rows.add(null, [[name, url]]);
+      }
+      await ctx.sync();
+    });
+  },
   watch(cb) {
     Excel.run(async ctx => { ctx.workbook.tables.getItem(LOG_TABLE).onChanged.add(async () => cb()); await ctx.sync(); }).catch(e => console.warn("change events unavailable", e));
   }
@@ -107,11 +125,13 @@ const excelStore = {
 const mem = {   // fictional
   log: [["d1", `${today()} 08:52:10`, FD, "Dr. Rivera", "", ARRIVED, "", "", "", ""], ["d2", `${today()} 08:55:41`, "Dr. Rivera", FD, "", "Ready for next patient", "", "", FD, `${today()} 08:56:02`]],
   res: [["Dr. Rivera", "https://zoom.us/j/0000000000", "https://example.com/nudge", "2"], ["Dr. Okafor", "", "", "3"], ["MagVenture", "", "", "TMS 1"]],
+  tools: [["TMS", ""], ["ESK", ""], ["Billing", ""], ["IR Portal", ""]],
   appt: [["Appt Time", "Patient", "Provider", "Status"], [0.375, "Doe, Jane", "Dr. Rivera", "Scheduled"], [0.4167, "Roe, Rich", "Dr. Okafor", "Scheduled"]]
 };
 const demoStore = {
-  async read() { return { ready: true, log: mem.log.map(r => [...r]), res: mem.res.map(r => [...r]), appt: mem.appt }; },
+  async read() { return { ready: true, log: mem.log.map(r => [...r]), res: mem.res.map(r => [...r]), tools: mem.tools.map(r => [...r]), appt: mem.appt }; },
   async setup() {}, async append(row) { mem.log.push(row); },
+  async saveTools(links) { mem.tools = toolRows(links); },
   async ack(id, by) { const r = mem.log.find(r => r[L.ID] === id); r[L["Acked by"]] = by; r[L["Acked at"]] = stamp(); },
   async saveLinks(name, zoom, nudge) { const r = mem.res.find(r => r[0] === name); if (r) { r[1] = zoom; r[2] = nudge; } else mem.res.push([name, zoom, nudge, ""]); },
   watch() {}
@@ -146,6 +166,9 @@ async function refresh() {
       state.log = d.log.filter(r => r[L.ID] !== "").map(toMsg).filter(m => m.sent.startsWith(today()));
       state.res = d.res.filter(r => String(r[0]).trim()).map(r => ({ name: String(r[0]).trim(), zoom: String(r[1]).trim(), nudge: String(r[2]).trim(), room: String(r[3]).trim() }));
       const a = parseAppts(d.appt); state.appts = a.rows; state.apptNote = a.note;
+      // workbook links win; until anyone saves them, a computer's own links from version 0.3 still show
+      const by = new Map((d.tools || []).map(r => [String(r[0]).trim(), String(r[1]).trim()])), wb = Object.fromEntries(TOOLS.map(([k, l]) => [k, by.get(l) || ""]).filter(([, u]) => u));
+      state.links = Object.keys(wb).length ? wb : load("kinnect.links") || {};
     }
     render(); alertNew();
   } catch (e) { fail(e); }
@@ -248,7 +271,7 @@ function viewSettings() {
     <div class="group"><h2>Kinnect tools</h2><p class="sub">The workbook each button in the Kinnect bar opens. In Excel on the web, open the workbook and copy the address bar, or use Share > Copy link.</p>
       ${TOOLS.filter(([k]) => k !== "relay").map(([k, l]) => `<label for="tl_${k}">${l} workbook</label><input id="tl_${k}" value="${esc(state.links[k] || "")}" placeholder="https://...sharepoint.com/...">`).join("")}
       <div style="margin-top:6px"><button class="sm" data-act="saveTools">Save tool links</button></div>
-      <div class="hint">Saved on this computer only. Each workbook still needs its own add-in installed.</div></div></section>`;
+      <div class="hint">Shared with everyone who uses this workbook (the "${TOOLS_SHEET}" sheet). Each workbook still needs its own add-in installed.</div></div></section>`;
 }
 function msgItem(m, canAck) {
   const who = mine(m) ? `from ${esc(m.from)}` : `to ${esc(m.to)}`;
@@ -341,7 +364,7 @@ const ACT = {
   },
   saveTools: () => {
     const next = {}; for (const [k, l] of TOOLS) { if (k === "relay") continue; const v = $(`tl_${k}`).value.trim(); if (v && !https(v)) return toast(`The ${l} link must start with https://`, true); if (v) next[k] = v; }
-    state.links = next; save("kinnect.links", next); toast("Tool links saved."); render();
+    store.saveTools(next).then(() => { state.links = next; save("kinnect.links", null); toast("Tool links saved for everyone using this workbook."); return refresh(); }).catch(fail);
   },
   links: async () => {
     const z = $("lnZoom").value.trim(), n = $("lnNudge").value.trim();

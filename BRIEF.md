@@ -40,8 +40,8 @@ Everyone sees a **Sent today** list showing whether each message has been seen, 
 | Desktop pop-ups | Optional, per computer, wherever the browser allows them. They never show the patient code. |
 | Per-computer settings | Notify me on/off, sound, volume, pop-ups and (front desk only) whether one-click appointment alerts include the patient code. |
 | Acknowledgement | Every message records who clicked **Got it** and when. |
-| One-click setup | **Set up workbook** creates the **Kinnect Log** and **Resources** sheets and their tables. |
-| Kinnect tool bar | TMS · ESK · Relay · Billing · IR Portal across the top, with Relay as home. Each button opens that tool's workbook in a new tab, from links saved per computer in Settings (never in this public code). One way for now: the other tools don't link back yet. |
+| One-click setup | **Set up workbook** creates the **Kinnect Log**, **Resources** and **Kinnect Tools** sheets and their tables. |
+| Kinnect tool bar | TMS · ESK · Relay · Billing · IR Portal across the top, with Relay as home. Each button opens that tool's workbook in a new tab, from links saved in the workbook on the **Kinnect Tools** sheet, so everyone using it shares them. Set them once in Settings or type them on the sheet (never in this public code). One way for now: the other tools don't link back yet. |
 | Demo mode | `taskpane.html?demo=1` runs on fictional data outside Excel, for training and testing. |
 
 ## Automations
@@ -94,6 +94,7 @@ These run without anyone clicking:
 |---|---|---|
 | Kinnect Log | `KinnectLog` | ID, Sent, From, To, Patient, Status, Room, Note, Acked by, Acked at |
 | Resources | `KinnectResources` | Resource, Zoom URL, Nudge URL, Room |
+| Kinnect Tools | `KinnectTools` | Tool, Workbook link (TMS, ESK, Billing, IR Portal) |
 | Appt List | (none) | The NextGen report, pasted as-is |
 
 ## Rollout
