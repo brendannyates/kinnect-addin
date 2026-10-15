@@ -1,5 +1,5 @@
-# Builds "Kinnect Relay DEMO (fake data).xlsx" in the OneDrive Add-In ManifestsKinnect folder with Excel desktop (COM). Every name, patient, link and SOP is fake.
-# Run: powershell -NoProfile -ExecutionPolicy Bypass -File scriptsmake-demo-workbook.ps1
+# Builds "Kinnect Relay DEMO (fake data).xlsx" in the OneDrive Add-In Manifests\Kinnect folder with Excel desktop (COM). Every name, patient, link and SOP is fake.
+# Run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts\make-demo-workbook.ps1
 $ErrorActionPreference = "Stop"
 $out = "C:\Users\byates\OneDrive - Mindful Health Solutions\Add-In Manifests\Kinnect\Kinnect Relay DEMO (fake data).xlsx"
 $xl = New-Object -ComObject Excel.Application
