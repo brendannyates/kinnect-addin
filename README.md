@@ -25,4 +25,5 @@ One-click alerts carry no patient identifier. A LASFIR code (last three + first 
 ## Try it
 
 - **Demo, no Excel:** open `taskpane.html?demo=1` (fictional data).
+- **Demo workbook:** `scripts/make-demo-workbook.ps1` builds "Kinnect Relay DEMO (fake data).xlsx" (every sheet filled with fake data, dated with `TODAY()`). Open it in Excel on the web with the add-in.
 - **In Excel on the web:** Insert > Add-ins > Upload My Add-in > `manifest.xml`, then Home > Kinnect > **Set up workbook**.
