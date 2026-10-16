@@ -178,8 +178,8 @@ async function refresh() {
       state.guide = (d.guide || []).map(r => ({ cat: s(r[0]) || "Other", section: s(r[1]), title: s(r[2]), aud: s(r[3]), updated: typeof r[4] === "number" ? when(r[4]).slice(0, 10) : s(r[4]), link: s(r[5]), purpose: s(r[6]), notes: s(r[7]) }))
         .filter(g => g.title);
     }
-    render(); alertNew();
-  } catch (e) { fail(e); }
+    render(); alertNew(); return true;
+  } catch (e) { fail(e); return false; }
 }
 
 /* ---------- sound: the chosen kin-nect sound file, else a built-in chime ---------- */
@@ -268,7 +268,8 @@ function paint() {
   const me = state.me;
   $("tools").innerHTML = tools();
   $("views").innerHTML = state.ready ? `<button class="vw${state.view === "guide" ? "" : " on"}" data-act="home">Messages</button><button class="vw${state.view === "guide" ? " on" : ""}" data-act="guide">Ops Guide</button>` : "";
-  $("who").innerHTML = me ? `<span class="who" data-act="who" title="Change who uses this computer">${esc(myName())}</span> <button class="sm" data-act="${state.view === "settings" ? "home" : "settings"}">${state.view === "settings" ? "Done" : "Settings"}</button>` : "";
+  $("who").innerHTML = (me ? `<span class="who" data-act="who" title="Change who uses this computer">${esc(myName())}</span> <button class="sm" data-act="${state.view === "settings" ? "home" : "settings"}">${state.view === "settings" ? "Done" : "Settings"}</button> ` : "")
+    + `<button class="sm" data-act="reload" title="Refresh from the workbook" aria-label="Refresh">&#8635;</button>`;
   if (!state.ready) return $("main").innerHTML = `<section><p>This workbook doesn't have the Kinnect sheets yet.</p><button class="pri" data-act="setup">Set up workbook</button><p class="hint">Adds a "${LOG_SHEET}" sheet for messages and a "${RES_SHEET}" sheet for each clinician or device, with Zoom and Nudge AI links.</p></section>`;
   if (state.view === "guide") return $("main").innerHTML = viewGuide();   // anyone can read the guide, even before picking a role
   if (!me) return $("main").innerHTML = viewWho();
@@ -374,6 +375,7 @@ const ACT = {
   who: () => { state.me = null; state.view = "main"; save("kinnect.me", null); render(); },
   settings: () => { state.view = "settings"; render(); Promise.all(SOUNDS.map(findSound)).then(() => state.view === "settings" && render()); },
   home: () => { state.view = "main"; render(); },
+  reload: async () => { if (await refresh()) toast("Refreshed from the workbook."); },
   guide: () => { state.view = "guide"; render(); },
   gcat: el => { state.gcat = el.dataset.c; render(); },
   beFD: () => { state.me = { role: "fd" }; save("kinnect.me", state.me); state.first = true; refresh(); },
