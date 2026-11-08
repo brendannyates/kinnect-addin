@@ -380,7 +380,7 @@ function paint() {
   $("tools").innerHTML = tools();
   $("views").innerHTML = state.ready ? `<button class="vw${state.view === "guide" ? "" : " on"}" data-act="home">Messages</button><button class="vw${state.view === "guide" ? " on" : ""}" data-act="guide">Ops Guide</button>` : "";
   $("who").innerHTML = (me ? `<span class="who" data-act="who" title="Change who this computer is for">${esc(myName())}</span> <button class="sm" data-act="${state.view === "settings" ? "home" : "settings"}">${state.view === "settings" ? "Done" : "Settings"}</button> ` : "")
-    + `<button class="sm" data-act="reload" title="Refresh from the workbook" aria-label="Refresh">&#8635;</button>`;
+    + `<button class="sm ibtn" data-act="reload" data-tip="Refresh" aria-label="Refresh">&#8635;</button><span class="du-slot"></span>`;   // the Dev Update bell docks in the slot
   if (!state.ready) return $("main").innerHTML = `<section><p>This workbook doesn't have the Kinnect sheets yet.</p><button class="pri" data-act="setup">Set up workbook</button><p class="hint">Adds a "${LOG_SHEET}" sheet for messages and a "${RES_SHEET}" sheet for each clinician or device, with Zoom and Nudge AI links.</p></section>`;
   if (state.view === "guide") return $("main").innerHTML = viewGuide();   // anyone can read the guide, even before picking a role
   if (!me) return $("main").innerHTML = viewWho();
@@ -540,6 +540,7 @@ document.addEventListener("change", async e => {
 /* ---------- start: change events from the log table plus a light poll as a fallback ---------- */
 let soonT; const soon = () => { clearTimeout(soonT); soonT = setTimeout(refresh, 400); };   // a burst of table changes = one read
 async function start() {
+  if (window.DevUpdates) DevUpdates.init({ app: "kinnect", send: null });   // Dev Update notices: this add-in has no full-screen dialog
   if (state.me && state.me.role === "clin") state.me.role = "res";   // saved by version 0.1
   state.who.wb = workbookKey(); renderGate();
   await refresh();
