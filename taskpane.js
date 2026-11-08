@@ -380,7 +380,7 @@ function paint() {
   $("tools").innerHTML = tools();
   $("views").innerHTML = state.ready ? `<button class="vw${state.view === "guide" ? "" : " on"}" data-act="home">Messages</button><button class="vw${state.view === "guide" ? " on" : ""}" data-act="guide">Ops Guide</button>` : "";
   $("who").innerHTML = (me ? `<span class="who" data-act="who" title="Change who this computer is for">${esc(myName())}</span> <button class="sm" data-act="${state.view === "settings" ? "home" : "settings"}">${state.view === "settings" ? "Done" : "Settings"}</button> ` : "")
-    + `<button class="sm ibtn" data-act="reload" data-tip="Refresh" aria-label="Refresh">&#8635;</button><span class="du-slot"></span>`;   // the Dev Update bell docks in the slot
+    + `<button class="sm ibtn" data-act="reload" data-tip="Refresh" aria-label="Refresh">&#8635;</button>`;   // the Dev Update bell floats (dev-updates.js)
   if (!state.ready) return $("main").innerHTML = `<section><p>This workbook doesn't have the Kinnect sheets yet.</p><button class="pri" data-act="setup">Set up workbook</button><p class="hint">Adds a "${LOG_SHEET}" sheet for messages and a "${RES_SHEET}" sheet for each clinician or device, with Zoom and Nudge AI links.</p></section>`;
   if (state.view === "guide") return $("main").innerHTML = viewGuide();   // anyone can read the guide, even before picking a role
   if (!me) return $("main").innerHTML = viewWho();
