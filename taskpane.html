@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Kinnect Relay</title>
 <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+<link rel="stylesheet" href="dev-updates.css?v=6">
 <style>
 :root{--ink:#1c2a33;--mute:#5f6f7a;--line:#dde3e8;--bg:#fff;--wash:#f3f6f8;--acc:#0f6e6e;--acc-w:#e2f1f1;--red:#b3261e;--red-w:#fbe9e7;--amb:#8a5a00;--amb-w:#fdf1d8}
 *{box-sizing:border-box}
@@ -55,15 +56,57 @@ details.group summary{cursor:pointer;margin-bottom:6px}
 .hint{color:var(--mute);font-size:11.5px;margin-top:4px}
 #toast{position:fixed;left:12px;right:12px;bottom:12px;padding:8px 10px;border-radius:4px;background:var(--ink);color:#fff;display:none}
 #toast.err{background:var(--red)}
+/* names the shared screens (and the Dev Update bell) read */
+:root{--surface:var(--bg);--surface-2:var(--line);--muted:var(--mute);--faint:#9aa6ae;--accent:var(--acc);--accent-soft:var(--acc-w);--font:"Segoe UI",system-ui,sans-serif}
+#who{display:flex;align-items:center;gap:4px}
+#who .devupd.du-docked .du-bell{width:32px;height:32px;border-radius:6px;padding:0}
+/* toolbar hover labels: what the press does (from the IVK Tracker) */
+#who .ibtn{position:relative}
+#who .ibtn[data-tip]:hover::after,#who .ibtn[data-tip]:focus-visible::after{content:attr(data-tip);position:absolute;top:calc(100% + 6px);right:0;white-space:nowrap;padding:5px 9px;border-radius:8px;background:var(--ink);color:var(--surface);font-size:12px;font-weight:500;line-height:1.2;pointer-events:none;z-index:60}
+.me{font-size:12px;color:var(--mute);margin-top:1px}
+.me b{color:var(--ink);font-weight:650}
+.me .linkbtn{font-weight:400}
+/* the loading screen on open, then "Enter your name" (both from the IVK Tracker) */
+.boot{position:fixed;inset:0;z-index:50;display:flex;overflow:auto;background:var(--bg);padding:24px}
+.bootin{width:min(380px,100%);margin:auto;display:flex;flex-direction:column;align-items:center;text-align:center}
+.bootin h1{margin:22px 0 0;font-size:24px}.bootin>p{margin:6px 0 0;font-size:14px;color:var(--mute)}
+.spinner{width:44px;height:44px;border-radius:50%;border:4px solid var(--line);border-top-color:var(--acc);animation:kinspin .9s linear infinite}
+@keyframes kinspin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spinner{animation-duration:2.4s}}
+.steps{list-style:none;width:100%;margin:24px 0 0;padding:0;text-align:left}
+.step{display:grid;grid-template-columns:22px 1fr;gap:12px;align-items:start;padding:8px 0;border-top:1px solid var(--line)}
+.step .k{width:20px;height:20px;border-radius:50%;border:2px solid var(--line);margin-top:1px;display:grid;place-items:center;font-size:11px;font-weight:650;color:#fff}
+.step.done .k{background:var(--acc);border-color:var(--acc)}
+.step.now .k{border-color:var(--ink)}
+.step .t{font-size:14px}
+.step .m{display:block;min-height:17px;font-size:12.5px;color:var(--mute);margin-top:1px}
+.step.next .t{color:var(--faint)}
+.boot.pick .bootin{width:min(420px,100%)}
+.whohero{display:flex;flex-direction:column;align-items:center}
+.whohero h1{margin:0;font-size:24px}
+.whohero p{margin:6px 0 0;font-size:14px;color:var(--mute)}
+.wholist{display:flex;flex-direction:column;gap:8px;width:100%;margin-top:22px}
+.wholist .whob{display:flex;justify-content:space-between;align-items:center;width:100%;min-height:48px;padding:0 14px;border-radius:10px;border:1.5px solid var(--line);color:var(--acc);font-size:16px;font-weight:650;text-align:left}
+.wholist .whob:hover{background:var(--acc-w)}
+.whob .chip{font-weight:400;color:var(--mute)}
+.whonew{width:100%;margin-top:14px;text-align:left}
+.whonew>summary{display:flex;align-items:center;min-height:44px;font-weight:650;color:var(--acc);cursor:pointer}
+.fld{font-size:13px;margin-top:8px}
+.fld input{display:block;margin-top:4px;min-height:40px;padding:8px 12px;border-radius:8px;font-size:14px;color:var(--ink)}
+.fld .hint{display:block}
+.whoact{display:flex;gap:6px;margin-top:10px}
+.whoact button{min-height:40px;padding:0 16px;font-weight:650}
 </style>
 </head>
 <body>
-<header><h1>Kinnect <span class="app">Relay</span></h1><span id="who"></span></header>
+<header><div><h1>Kinnect <span class="app">Relay</span></h1><div id="me" class="me" hidden></div></div><span id="who"></span></header>
 <nav id="tools" class="tools" aria-label="Kinnect tools"></nav>
 <nav id="views" class="views" aria-label="Relay views"></nav>
 <div id="banner"></div>
 <main id="main"><section class="none">Loading...</section></main>
 <div id="toast" role="status" aria-live="polite"></div>
-<script src="taskpane.js"></script>
+<div id="gate"><div class="boot" role="status" aria-live="polite"><div class="bootin"><div class="spinner" aria-hidden="true"></div><h1>Kinnect Relay</h1><p>Loading…</p></div></div></div>
+<script src="dev-updates.js?v=6"></script>
+<script src="taskpane.js?v=6"></script>
 </body>
 </html>

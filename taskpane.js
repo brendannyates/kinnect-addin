@@ -26,7 +26,8 @@ const TOOLS = [["tms", "TMS"], ["esk", "ESK"], ["relay", "Relay"], ["billing", "
 
 /* the tool links as workbook rows: one per tool other than Relay, in bar order */
 const toolRows = links => TOOLS.filter(([k]) => k !== "relay").map(([k, l]) => [l, links[k] || ""]);
-const state = { links: load("kinnect.links") || {}, guide: [], gq: "", gcat: "", ready: false, log: [], res: [], appts: [], apptNote: "", view: "main", me: load("kinnect.me"), dev: { ...DEV_DEFAULT, ...(load("kinnect.dev") || {}) }, alerted: new Set(), first: true, sent: new Map() };
+const state = { links: load("kinnect.links") || {}, guide: [], gq: "", gcat: "", ready: false, log: [], res: [], appts: [], apptNote: "", view: "main", me: load("kinnect.me"), dev: { ...DEV_DEFAULT, ...(load("kinnect.dev") || {}) }, alerted: new Set(), first: true, sent: new Map(),
+  boot: { on: true, i: 0, m: [] }, who: { wb: "", users: [], name: "", day: "", picking: false } };
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 function load(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } }
@@ -39,6 +40,8 @@ const hm = s => { const t = String(s).slice(11, 16); if (!t) return ""; const [h
 const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 const https = u => /^https:\/\/\S+$/i.test(String(u || "").trim());
 const myName = () => state.me && (state.me.role === "fd" ? FD : state.me.name);
+/* the person at this computer today ("Enter your name"); messages still go out from the front desk or the resource */
+const byName = () => state.who.name || myName();
 
 let toastTimer;
 function toast(msg, err) { const t = $("toast"); t.textContent = msg; t.className = err ? "err" : ""; t.style.display = "block"; clearTimeout(toastTimer); toastTimer = setTimeout(() => t.style.display = "none", err ? 8000 : 3500); }
@@ -57,11 +60,11 @@ function toLasfir(v) {
 
 /* ---------- workbook store (Excel) and an in-memory stand-in for ?demo ---------- */
 const excelStore = {
-  async read() {
+  async read(step = () => {}) {
     let out = null;
     await Excel.run(async ctx => {
       const lt = ctx.workbook.tables.getItemOrNullObject(LOG_TABLE), rt = ctx.workbook.tables.getItemOrNullObject(RES_TABLE), tt = ctx.workbook.tables.getItemOrNullObject(TOOLS_TABLE), gt = ctx.workbook.tables.getItemOrNullObject(GUIDE_TABLE), aw = ctx.workbook.worksheets.getItemOrNullObject(APPT_SHEET);
-      await ctx.sync();
+      await ctx.sync(); step();
       if (lt.isNullObject || rt.isNullObject) { out = { ready: false }; return; }
       const lb = lt.getDataBodyRange(), rb = rt.getDataBodyRange(), tb = tt.isNullObject ? null : tt.getDataBodyRange(), gb = gt.isNullObject ? null : gt.getDataBodyRange(), au = aw.isNullObject ? null : aw.getUsedRangeOrNullObject(true);
       lb.load("values"); rb.load("values"); if (tb) tb.load("values"); if (gb) gb.load("values"); if (au) au.load("values");
@@ -134,7 +137,7 @@ const mem = {   // fictional
   appt: [["Appt Time", "Patient", "Provider", "Status"], [0.375, "Doe, Jane", "Dr. Rivera", "Scheduled"], [0.4167, "Roe, Rich", "Dr. Okafor", "Scheduled"]]
 };
 const demoStore = {
-  async read() { return { ready: true, log: mem.log.map(r => [...r]), res: mem.res.map(r => [...r]), tools: mem.tools.map(r => [...r]), guide: mem.guide, appt: mem.appt }; },
+  async read(step = () => {}) { const nap = () => new Promise(r => setTimeout(r, state.boot.on ? 300 : 0)); await nap(); step(); await nap(); return { ready: true, log: mem.log.map(r => [...r]), res: mem.res.map(r => [...r]), tools: mem.tools.map(r => [...r]), guide: mem.guide, appt: mem.appt }; },
   async setup() {}, async append(row) { mem.log.push(row); },
   async saveTools(links) { mem.tools = toolRows(links); },
   async ack(id, by) { const r = mem.log.find(r => r[L.ID] === id); r[L["Acked by"]] = by; r[L["Acked at"]] = stamp(); },
@@ -166,7 +169,7 @@ const when = v => { if (typeof v !== "number") return String(v); const d = new D
 const toMsg = r => ({ id: String(r[L.ID]), sent: when(r[L.Sent]), from: String(r[L.From]), to: String(r[L.To]), pt: String(r[L.Patient]), status: String(r[L.Status]), room: String(r[L.Room]), note: String(r[L.Note]), ackBy: String(r[L["Acked by"]]), ackAt: when(r[L["Acked at"]]) });
 async function refresh() {
   try {
-    const d = await store.read(); state.ready = d.ready;
+    const d = await store.read(() => bootStep(0, "Connected")); state.ready = d.ready;
     if (d.ready) {
       state.log = d.log.filter(r => r[L.ID] !== "").map(toMsg).filter(m => m.sent.startsWith(today()));
       state.res = d.res.filter(r => String(r[0]).trim()).map(r => ({ name: String(r[0]).trim(), zoom: String(r[1]).trim(), nudge: String(r[2]).trim(), room: String(r[3]).trim() }));
@@ -178,8 +181,116 @@ async function refresh() {
       state.guide = (d.guide || []).map(r => ({ cat: s(r[0]) || "Other", section: s(r[1]), title: s(r[2]), aud: s(r[3]), updated: typeof r[4] === "number" ? when(r[4]).slice(0, 10) : s(r[4]), link: s(r[5]), purpose: s(r[6]), notes: s(r[7]) }))
         .filter(g => g.title);
     }
-    render(); alertNew(); return true;
-  } catch (e) { fail(e); return false; }
+    if (state.boot.on) {
+      const n = (k, one) => `${k} ${one}${k === 1 ? "" : "s"}`;
+      bootStep(1, d.ready ? `${n(state.log.length, "message")} today` : "Not set up yet");
+      bootStep(2, d.ready ? `${state.res.length} ${state.res.length === 1 ? "clinician or device" : "clinicians and devices"}` : "Not set up yet");
+      bootStep(3, d.ready ? (state.apptNote ? "No report pasted yet" : `${n(state.appts.length, "appointment")} today`) : "Not set up yet");
+    }
+    render(); alertNew(); await bootDone(); return true;
+  } catch (e) { fail(e); await bootDone(); return false; }
+}
+
+/* ---------- the loading screen, then "Enter your name" (both as in the IVK Tracker) ----------
+   The people who use this workbook are a list in its document settings (kinnectUsers), so no sheet is added. This computer
+   remembers, per workbook, who picked today and who has used it here before (localStorage "kinnectWho:<workbook key>").
+   The pick lasts the day; nobody is picked for you. It is separate from who this computer is for (front desk or a resource). */
+const USERS_KEY = "kinnectUsers", WBID_KEY = "kinnectWbId";
+const BOOT = ["Connecting to the workbook", "Reading the Kinnect Log", "Reading Resources", "Reading Appt List"];
+const memDoc = {};   // ?demo: document settings in memory
+const doc = {
+  get: k => DEMO ? (k in memDoc ? memDoc[k] : null) : Office.context.document.settings.get(k),
+  refresh: () => new Promise(res => { if (DEMO) return res(); try { Office.context.document.settings.refreshAsync(() => res()); } catch { res(); } }),
+  set: (k, v) => new Promise((res, rej) => {
+    if (DEMO) { memDoc[k] = v; return res(); }
+    const s = Office.context.document.settings; s.set(k, v);
+    s.saveAsync(r => r.status === Office.AsyncResultStatus.Succeeded ? res() : rej(new Error("Couldn't save your name to the workbook. Try again.")));
+  })
+};
+const txt = s => String(s ?? "").trim();
+const userKey = n => txt(n).toLowerCase();
+const cleanName = s => txt(s).replace(/\s+/g, " ").slice(0, 30).trim();
+function wbKeyOf(s) {
+  let h = 0x811c9dc5; const t = String(s || "").trim().toLowerCase().replace(/[?#].*$/, "");
+  for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+  return t ? "w" + h.toString(36) : "";
+}
+function workbookKey() {
+  if (DEMO) return "demo";
+  let url = ""; try { url = Office.context.document.url || ""; } catch { /* no document */ }
+  if (url) return wbKeyOf(url);
+  let id = doc.get(WBID_KEY);
+  if (!id) { id = `id${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`; doc.set(WBID_KEY, id).catch(() => { /* read-only: this session only */ }); }
+  return wbKeyOf(id);
+}
+const whoKey = () => state.who.wb ? `kinnectWho:${state.who.wb}` : "";
+/* what this computer remembers for one workbook: { day: "2026-11-07", name: "Sam", used: ["Sam", "Ana"] } */
+function whoRead() {
+  const o = (whoKey() && load(whoKey())) || {};
+  return { day: txt(o.day), name: txt(o.name), used: Array.isArray(o.used) ? o.used.map(txt).filter(Boolean) : [] };
+}
+function readUsers() {
+  const v = doc.get(USERS_KEY), seen = new Set(), out = [];
+  for (const u of Array.isArray(v) ? v : []) { const name = cleanName(u && u.name), k = userKey(name); if (name && !seen.has(k)) { seen.add(k); out.push({ name, added: txt(u.added) }); } }
+  return out;
+}
+/* the people who have used this computer on this workbook first (most recent first), then everyone else A-Z */
+function pickOrder(users, here) {
+  const H = (here || []).map(userKey), rank = u => { const i = H.indexOf(userKey(u.name)); return i < 0 ? Infinity : i; };
+  return users.map(u => ({ name: u.name, here: rank(u) !== Infinity })).sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+}
+/* today's pick on this computer, if any, and only while they're still on the workbook's list */
+function loadWho() {
+  const rec = whoRead(), n = rec.day === today() ? rec.name : "", u = n && state.who.users.find(x => userKey(x.name) === userKey(n));
+  state.who.name = u ? u.name : ""; state.who.day = state.who.name ? rec.day : "";
+}
+function setWho(name) {
+  const rec = whoRead();
+  if (whoKey()) save(whoKey(), { day: today(), name, used: [name, ...rec.used.filter(n => userKey(n) !== userKey(name))].slice(0, 20) });
+  Object.assign(state.who, { name, day: today(), picking: false });
+}
+function bootStep(i, msg) { const B = state.boot; if (!B.on) return; B.m[i] = msg; B.i = Math.max(B.i, i + 1); renderGate(); }
+async function bootDone() {
+  if (!state.boot.on) return;
+  await doc.refresh(); state.who.users = readUsers(); loadWho(); state.boot.on = false; renderGate();
+}
+function bootHTML() {
+  const B = state.boot;
+  return `<div class="boot" role="status" aria-live="polite"><div class="bootin"><div class="spinner" aria-hidden="true"></div><h1>Kinnect Relay</h1><p>Reading the workbook.</p>
+    <ol class="steps">${BOOT.map((t, i) => `<li class="step ${B.i > i ? "done" : B.i === i ? "now" : "next"}"><span class="k">${B.i > i ? "✓" : ""}</span><span><span class="t">${t}</span><span class="m">${esc(B.m[i] || "")}</span></span></li>`).join("")}</ol></div></div>`;
+}
+/* "Enter your name": this workbook's list only, the people who've used this computer here first, nobody picked */
+function pickHTML() {
+  const W = state.who, L = pickOrder(W.users, whoRead().used), cancel = W.picking && W.name;
+  return `<div class="boot pick"><div class="bootin"><div class="whohero"><h1>Enter your name</h1>
+    <p>${L.length ? "Pick yours below, or add it if you’re new." : "Nobody has added their name to this workbook yet. Add yours to start."}</p></div>
+    ${L.length ? `<div class="wholist" role="group" aria-label="People on this workbook">${L.map(u => `<button type="button" class="whob" data-act="pickUser" data-v="${esc(u.name)}">${esc(u.name)}${u.here ? `<span class="chip">On this computer</span>` : ""}</button>`).join("")}</div>` : ""}
+    <details class="whonew"${L.length ? "" : " open"}><summary>${L.length ? "I’m not on the list" : "Add your name"}</summary>
+      <label class="fld">Your name<input id="whoName" autocomplete="off" spellcheck="false" maxlength="30"><span class="hint">Usually your first name. Add a last initial if someone here shares it.</span></label>
+      <div class="whoact"><button type="button" class="pri" data-act="addUser">Add me and start</button></div></details>
+    ${cancel ? `<div class="whoact"><button type="button" data-act="pickCancel">Stay as ${esc(W.name)}</button></div>` : ""}</div></div>`;
+}
+function renderGate() {
+  const g = $("gate"), me = $("me"), W = state.who;
+  if (state.boot.on) g.innerHTML = bootHTML();
+  else if (!W.name || W.picking) {
+    const open = g.querySelector(".whonew")?.open, typed = $("whoName")?.value || "";
+    g.innerHTML = pickHTML();
+    if (open) g.querySelector(".whonew").open = true;
+    if (typed) $("whoName").value = typed;
+    if ($("whoName") && (!W.users.length || open)) $("whoName").focus();
+  } else g.innerHTML = "";
+  me.hidden = !W.name;
+  me.innerHTML = W.name ? `<b>${esc(W.name)}</b> · <button type="button" class="linkbtn" data-act="switchUser">Switch user</button>` : "";
+}
+async function addUser() {
+  const n = cleanName($("whoName")?.value); if (!n) return $("whoName")?.focus();
+  try {
+    await doc.refresh();
+    const list = readUsers(), had = list.find(u => userKey(u.name) === userKey(n));
+    if (!had) await doc.set(USERS_KEY, [...list, { name: n, added: today() }]);
+    state.who.users = readUsers(); setWho(had ? had.name : n); renderGate(); render();
+  } catch (e) { fail(e); }
 }
 
 /* ---------- sound: the chosen kin-nect sound file, else a built-in chime ---------- */
@@ -268,8 +379,8 @@ function paint() {
   const me = state.me;
   $("tools").innerHTML = tools();
   $("views").innerHTML = state.ready ? `<button class="vw${state.view === "guide" ? "" : " on"}" data-act="home">Messages</button><button class="vw${state.view === "guide" ? " on" : ""}" data-act="guide">Ops Guide</button>` : "";
-  $("who").innerHTML = (me ? `<span class="who" data-act="who" title="Change who uses this computer">${esc(myName())}</span> <button class="sm" data-act="${state.view === "settings" ? "home" : "settings"}">${state.view === "settings" ? "Done" : "Settings"}</button> ` : "")
-    + `<button class="sm" data-act="reload" title="Refresh from the workbook" aria-label="Refresh">&#8635;</button>`;
+  $("who").innerHTML = (me ? `<span class="who" data-act="who" title="Change who this computer is for">${esc(myName())}</span> <button class="sm" data-act="${state.view === "settings" ? "home" : "settings"}">${state.view === "settings" ? "Done" : "Settings"}</button> ` : "")
+    + `<button class="sm ibtn" data-act="reload" data-tip="Refresh" aria-label="Refresh">&#8635;</button><span class="du-slot"></span>`;   // the Dev Update bell docks in the slot
   if (!state.ready) return $("main").innerHTML = `<section><p>This workbook doesn't have the Kinnect sheets yet.</p><button class="pri" data-act="setup">Set up workbook</button><p class="hint">Adds a "${LOG_SHEET}" sheet for messages and a "${RES_SHEET}" sheet for each clinician or device, with Zoom and Nudge AI links.</p></section>`;
   if (state.view === "guide") return $("main").innerHTML = viewGuide();   // anyone can read the guide, even before picking a role
   if (!me) return $("main").innerHTML = viewWho();
@@ -277,7 +388,7 @@ function paint() {
 }
 function viewWho() {
   const opts = state.res.map(c => `<option>${esc(c.name)}</option>`).join("");
-  return `<section><h2>Who's using this computer?</h2><p class="sub">Saved on this computer only.</p>
+  return `<section><h2>Who is this computer for?</h2><p class="sub">Messages go out under this. Saved on this computer only.</p>
     <button class="pri big" data-act="beFD" style="width:100%;margin-bottom:12px">Front desk</button>
     <label for="whoRes">Clinician or device</label><select id="whoRes"><option value="">Choose...</option>${opts}</select>
     <label for="whoNew">Or add one</label><input id="whoNew" placeholder="Name as it appears in NextGen">
@@ -386,7 +497,11 @@ const ACT = {
   },
   quick: el => send(el.dataset.to, el.dataset.st, el.dataset.pt, el.dataset.room, ""),
   send: () => send($("fTo").value, $("fSt").value, $("fPt").value, $("fRoom").value, $("fNote").value),
-  ack: async el => { try { await store.ack(el.dataset.id, myName()); await refresh(); } catch (e) { fail(e); } },
+  ack: async el => { try { await store.ack(el.dataset.id, byName()); await refresh(); } catch (e) { fail(e); } },
+  pickUser: el => { setWho(el.dataset.v); renderGate(); render(); },
+  addUser: () => addUser(),
+  pickCancel: () => { state.who.picking = false; renderGate(); },
+  switchUser: async () => { await doc.refresh(); state.who.users = readUsers(); state.who.picking = true; renderGate(); },
   open: el => openUrl(el.dataset.url),
   testSound: () => playSound(),
   tool: el => {
@@ -406,6 +521,7 @@ const ACT = {
   }
 };
 document.addEventListener("click", e => { const el = e.target.closest("[data-act]"); if (el && ACT[el.dataset.act]) ACT[el.dataset.act](el); });
+document.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.id === "whoName") { e.preventDefault(); addUser(); } });
 document.addEventListener("input", e => { if (e.target.id === "gQ") { state.gq = e.target.value; render(); } });
 document.addEventListener("change", async e => {
   const id = e.target.id;
@@ -424,9 +540,13 @@ document.addEventListener("change", async e => {
 /* ---------- start: change events from the log table plus a light poll as a fallback ---------- */
 let soonT; const soon = () => { clearTimeout(soonT); soonT = setTimeout(refresh, 400); };   // a burst of table changes = one read
 async function start() {
+  if (window.DevUpdates) DevUpdates.init({ app: "kinnect", send: null });   // Dev Update notices: this add-in has no full-screen dialog
   if (state.me && state.me.role === "clin") state.me.role = "res";   // saved by version 0.1
+  state.who.wb = workbookKey(); renderGate();
   await refresh();
   if (state.ready) store.watch(soon);
   setInterval(() => { if (!document.hidden) refresh(); }, POLL_MS);
+  /* a pane left open overnight asks for a name again on the new day */
+  setInterval(() => { if (!state.boot.on && state.who.name && state.who.day !== today()) { state.who.name = ""; renderGate(); } }, 60000);
 }
 if (DEMO || typeof Office === "undefined") start(); else Office.onReady(start);
