@@ -1,16 +1,24 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-app="kinnect">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Kinnect Relay</title>
 <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
-<link rel="stylesheet" href="dev-updates.css?v=7">
+<link rel="stylesheet" href="shell.css?v=8">
+<link rel="stylesheet" href="dev-updates.css?v=8">
 <style>
-:root{--ink:#1c2a33;--mute:#5f6f7a;--line:#dde3e8;--bg:#fff;--wash:#f3f6f8;--acc:#0f6e6e;--acc-w:#e2f1f1;--red:#b3261e;--red-w:#fbe9e7;--amb:#8a5a00;--amb-w:#fdf1d8}
+/* every colour comes from these tokens; the toolbar's light / dark switches to dark (html[data-theme], shell.js) */
+:root{color-scheme:light;--ink:#1c2a33;--mute:#5a6a75;--line:#dde3e8;--bg:#fff;--wash:#f3f6f8;--acc:#0f6e6e;--acc-h:#0b5858;--acc-ink:#fff;--acc-w:#e2f1f1;--red:#b3261e;--red-w:#fbe9e7;--amb:#8a5a00;--amb-w:#fdf1d8;--chip:#fff;--shadow:0 1px 2px rgba(16,28,34,.06),0 10px 28px -14px rgba(16,28,34,.18)}
+:root[data-theme="dark"]{color-scheme:dark;--ink:#e6edf0;--mute:#9fb0ba;--line:#2e3c44;--bg:#11181c;--wash:#18232a;--acc:#5ec9c4;--acc-h:#82d9d5;--acc-ink:#062625;--acc-w:#153535;--red:#f19189;--red-w:#43211e;--amb:#e9b150;--amb-w:#3a2d13;--chip:#1d2a31;--shadow:0 0 0 1px rgba(255,255,255,.05),0 10px 28px -14px rgba(0,0,0,.6)}
 *{box-sizing:border-box}
 body{margin:0;font:13px/1.45 "Segoe UI",system-ui,sans-serif;color:var(--ink);background:var(--bg)}
-header{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--line)}
+header{padding:6px 8px 8px 12px;border-bottom:1px solid var(--line)}
+/* first line: the name and the toolbar flush right; second: who's here, and who this computer is for */
+.hrow{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.hrow.sub{min-height:22px}
+#role{display:flex;align-items:center;gap:4px;margin-left:auto;font-size:12px}
+#role button.sm{margin:0}
 h1{font-size:15px;margin:0;font-weight:650}
 h2{font-size:13px;margin:0 0 6px;font-weight:650}
 h2 .n{color:var(--mute);font-weight:400;margin-left:4px}
@@ -18,11 +26,11 @@ button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(-
 button:hover{background:var(--wash)}
 button:disabled{opacity:.5;cursor:default}
 button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
-button.pri{background:var(--acc);border-color:var(--acc);color:#fff}
-button.pri:hover{background:#0b5858}
+button.pri{background:var(--acc);border-color:var(--acc);color:var(--acc-ink)}
+button.pri:hover{background:var(--acc-h)}
 button.sm{padding:1px 8px;font-size:12px;margin:3px 4px 0 0}
 button.big{flex:1;padding:10px;font-size:14px;font-weight:650}
-input,select{font:inherit;padding:4px 6px;border:1px solid var(--line);border-radius:4px;width:100%}
+input,select{font:inherit;padding:4px 6px;border:1px solid var(--line);border-radius:4px;width:100%;background:var(--bg);color:var(--ink)}
 label{display:block;font-size:12px;color:var(--mute);margin:6px 0 2px}
 section{padding:12px}
 .group{margin-bottom:16px}
@@ -34,7 +42,7 @@ section{padding:12px}
 .item.ack{opacity:.7}
 .sub{color:var(--mute);font-size:12px}
 .none{color:var(--mute);font-style:italic;font-size:12.5px}
-.chip{display:inline-block;padding:0 6px;border-radius:9px;font-size:11px;background:#fff;border:1px solid var(--line);margin-left:4px}
+.chip{display:inline-block;padding:0 6px;border-radius:9px;font-size:11px;background:var(--chip);border:1px solid var(--line);margin-left:4px}
 .banner{margin:10px 12px 0;padding:8px 10px;border-radius:4px;background:var(--amb-w);color:var(--amb);font-size:12.5px}
 .banner.red{background:var(--red-w);color:var(--red);font-weight:650}
 .who{cursor:pointer;color:var(--acc);text-decoration:underline;font-size:12px}
@@ -43,26 +51,38 @@ section{padding:12px}
 .chk input{width:auto}
 details.group summary{cursor:pointer;margin-bottom:6px}
 .app{color:var(--acc)}
-.tools{display:flex;gap:2px;padding:4px 8px;background:var(--wash);border-bottom:1px solid var(--line);overflow-x:auto}
+.kbar{display:flex;gap:2px;padding:4px 8px;background:var(--wash);border-bottom:1px solid var(--line);overflow-x:auto}
 .tool{border:0;background:none;padding:4px 8px;border-radius:4px;font-size:12px;white-space:nowrap;color:var(--ink)}
-.tool.on{background:var(--acc);color:#fff;font-weight:650}
+.tool.on{background:var(--acc);color:var(--acc-ink);font-weight:650}
 .tool.unset{color:var(--mute)}
 .views{display:flex;border-bottom:1px solid var(--line)}
 .vw{flex:1;border:0;border-bottom:2px solid transparent;border-radius:0;background:none;padding:7px 6px}
 .vw.on{border-bottom-color:var(--acc);color:var(--acc);font-weight:650}
 .linkbtn{border:0;background:none;padding:0;color:var(--acc);text-decoration:underline;font-weight:650;text-align:left;cursor:pointer}
-.linkbtn:hover{background:none;color:#0b5858}
+.linkbtn:hover{background:none;color:var(--acc-h)}
 #gQ{margin-bottom:2px}
 .hint{color:var(--mute);font-size:11.5px;margin-top:4px}
-#toast{position:fixed;left:12px;right:12px;bottom:12px;padding:8px 10px;border-radius:4px;background:var(--ink);color:#fff;display:none}
+#toast{position:fixed;left:12px;right:12px;bottom:12px;z-index:70;padding:8px 10px;border-radius:4px;background:var(--ink);color:var(--bg);display:none}
 #toast.err{background:var(--red)}
 /* names the shared screens (and the Dev Update bell) read */
-:root{--surface:var(--bg);--surface-2:var(--line);--muted:var(--mute);--faint:#9aa6ae;--accent:var(--acc);--accent-soft:var(--acc-w);--font:"Segoe UI",system-ui,sans-serif}
-#who{display:flex;align-items:center;gap:4px}
-#who .devupd.du-docked .du-bell{width:32px;height:32px;border-radius:6px;padding:0}
-/* toolbar hover labels: what the press does (from the IVK Tracker) */
-#who .ibtn{position:relative}
-#who .ibtn[data-tip]:hover::after,#who .ibtn[data-tip]:focus-visible::after{content:attr(data-tip);position:absolute;top:calc(100% + 6px);right:0;white-space:nowrap;padding:5px 9px;border-radius:8px;background:var(--ink);color:var(--surface);font-size:12px;font-weight:500;line-height:1.2;pointer-events:none;z-index:60}
+:root{--surface:var(--bg);--surface-2:var(--line);--surface-3:var(--wash);--muted:var(--mute);--faint:#9aa6ae;--accent:var(--acc);--accent-soft:var(--acc-w);--danger:var(--red);--danger-soft:var(--red-w);--warn:var(--amb);--font:"Segoe UI",system-ui,sans-serif}
+:root[data-theme="dark"]{--faint:#5d6c75}
+#who{display:flex;align-items:center}
+#who .tools{margin-left:2px}
+.du-bell,.du-head button{border:0}
+/* full screen (shell.css draws the rail): the rail has Messages, Ops Guide and Settings, so the tabs go */
+#rail{display:contents}
+#frame:not(.fsframe) #rail{display:none}
+body.fs #views{display:none}
+body.fs header{padding:0 0 14px;border-bottom:0}
+body.fs .hrow.sub{min-height:0}
+body.fs h1{font-size:22px;line-height:40px}
+body.fs .kbar{border:0;border-radius:10px;padding:4px}
+body.fs #banner .banner{margin:10px 0 0}
+body.fs main section{padding:16px 0}
+body.fs .fsframe>.page{background:var(--bg)}
+body.fs .rescards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px}
+body.fs .rescards .card{margin:0}
 .me{font-size:12px;color:var(--mute);margin-top:1px}
 .me b{color:var(--ink);font-weight:650}
 .me .linkbtn{font-weight:400}
@@ -75,7 +95,7 @@ details.group summary{cursor:pointer;margin-bottom:6px}
 @media (prefers-reduced-motion:reduce){.spinner{animation-duration:2.4s}}
 .steps{list-style:none;width:100%;margin:24px 0 0;padding:0;text-align:left}
 .step{display:grid;grid-template-columns:22px 1fr;gap:12px;align-items:start;padding:8px 0;border-top:1px solid var(--line)}
-.step .k{width:20px;height:20px;border-radius:50%;border:2px solid var(--line);margin-top:1px;display:grid;place-items:center;font-size:11px;font-weight:650;color:#fff}
+.step .k{width:20px;height:20px;border-radius:50%;border:2px solid var(--line);margin-top:1px;display:grid;place-items:center;font-size:11px;font-weight:650;color:var(--acc-ink)}
 .step.done .k{background:var(--acc);border-color:var(--acc)}
 .step.now .k{border-color:var(--ink)}
 .step .t{font-size:14px}
@@ -99,14 +119,20 @@ details.group summary{cursor:pointer;margin-bottom:6px}
 </style>
 </head>
 <body>
-<header><div><h1>Kinnect <span class="app">Relay</span></h1><div id="me" class="me" hidden></div></div><span id="who"></span></header>
-<nav id="tools" class="tools" aria-label="Kinnect tools"></nav>
+<div id="frame">
+<div id="rail"></div>
+<div class="page">
+<header><div class="hrow"><h1 id="title">Kinnect <span class="app">Relay</span></h1><span id="who"></span></div><div class="hrow sub"><div id="me" class="me" hidden></div><span id="role"></span></div></header>
+<nav id="kbar" class="kbar" aria-label="Kinnect tools"></nav>
 <nav id="views" class="views" aria-label="Relay views"></nav>
 <div id="banner"></div>
 <main id="main"><section class="none">Loading...</section></main>
+</div>
+</div>
 <div id="toast" role="status" aria-live="polite"></div>
 <div id="gate"><div class="boot" role="status" aria-live="polite"><div class="bootin"><div class="spinner" aria-hidden="true"></div><h1>Kinnect Relay</h1><p>Loading…</p></div></div></div>
-<script src="dev-updates.js?v=7"></script>
-<script src="taskpane.js?v=7"></script>
+<script src="dev-updates.js?v=8"></script>
+<script src="shell.js?v=8"></script>
+<script src="taskpane.js?v=8"></script>
 </body>
 </html>
