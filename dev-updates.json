@@ -1,0 +1,14 @@
+{
+  "updates": [
+    {
+      "id": "2026-11-07-name-bell",
+      "date": "2026-11-07",
+      "bullets": [
+        "New: When you open Relay, it shows what it's reading from the workbook, then asks you to enter your name. Pick yours, or add it if you're new. This computer remembers you for the rest of the day.",
+        "New: Your name shows under the title. Use Switch user if someone else takes over. When you press Got it on a message, it says your name.",
+        "Changed: \"Who's using this computer?\" is now \"Who is this computer for?\": the front desk, or a clinician or device. Messages still go out under that.",
+        "New: This bell keeps a list of what's changed."
+      ]
+    }
+  ]
+}
