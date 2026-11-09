@@ -1,6 +1,16 @@
 {
   "updates": [
     {
+      "id": "2026-11-08-bell-home",
+      "date": "2026-11-08",
+      "bullets": [
+        "New: Full screen. Press the corners button at the top right. Messages, Ops Guide and Settings sit in a bar on the left, and resource cards spread across the page. Keep the side pane open: it still plays the sound.",
+        "New: Light and dark mode. Press the sun / moon at the top right; this computer remembers your choice.",
+        "Changed: Refresh is now the circular arrow at the top right, next to full screen and light/dark.",
+        "Changed: The Dev updates bell is only in full screen, right of the name at the top left. A red dot means something new; click the bell to read it. Nothing pops up on its own."
+      ]
+    },
+    {
       "id": "2026-11-08-bell-float",
       "date": "2026-11-08",
       "bullets": [

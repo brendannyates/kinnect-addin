@@ -5,6 +5,9 @@
    Nothing leaves the workbook; this page holds no PHI. */
 "use strict";
 const DEMO = /[?&]demo\b/.test(location.search);
+/* Full screen is an Office dialog floating over the Excel page (shell.js). It never touches the workbook: it draws from what the
+   pane read (snap) and asks the pane for every read and write (Shell.call). The pane keeps the sound and desktop pop-ups. */
+const FULL = !!(window.Shell && Shell.FULL);
 const LOG_SHEET = "Kinnect Log", LOG_TABLE = "KinnectLog", RES_SHEET = "Resources", RES_TABLE = "KinnectResources", APPT_SHEET = "Appt List";
 const LOG_COLS = ["ID", "Sent", "From", "To", "Patient", "Status", "Room", "Note", "Acked by", "Acked at"];
 const RES_COLS = ["Resource", "Zoom URL", "Nudge URL", "Room"];
@@ -31,7 +34,10 @@ const state = { links: load("kinnect.links") || {}, guide: [], gq: "", gcat: "",
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 function load(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } }
-function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+function save(k, v) {
+  try { localStorage.setItem(k, JSON.stringify(v)); } catch {}
+  if (FULL && /^kinnect\.(me|dev|links)$/.test(k)) Shell.call("lsSet", k, v).catch(e => console.error(e));   // the pane is this computer's record
+}
 const setDev = patch => { state.dev = { ...state.dev, ...patch }; save("kinnect.dev", state.dev); };
 const pad = n => String(n).padStart(2, "0");
 const stamp = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
@@ -144,7 +150,12 @@ const demoStore = {
   async saveLinks(name, zoom, nudge) { const r = mem.res.find(r => r[0] === name); if (r) { r[1] = zoom; r[2] = nudge; } else mem.res.push([name, zoom, nudge, ""]); },
   watch() {}
 };
-const store = DEMO ? demoStore : excelStore;
+/* full screen: every read and write is the pane's */
+const fullStore = {
+  read: () => Shell.call("read"), setup: () => Shell.call("setup"), append: row => Shell.call("append", row), ack: (id, by) => Shell.call("ack", id, by),
+  saveLinks: (name, zoom, nudge) => Shell.call("saveLinks", name, zoom, nudge), saveTools: links => Shell.call("saveTools", links), watch() {}
+};
+const store = FULL ? fullStore : DEMO ? demoStore : excelStore;
 
 /* ---------- read and parse ---------- */
 /* NextGen report on Appt List: finds the header row by name, so column order doesn't matter. Adjust APPT_HDR once the report exists. */
@@ -168,8 +179,12 @@ function parseAppts(v) {
 const when = v => { if (typeof v !== "number") return String(v); const d = new Date(Math.round((v - 25569) * 864e5)); return stamp(new Date(d.getTime() + d.getTimezoneOffset() * 6e4)); };
 const toMsg = r => ({ id: String(r[L.ID]), sent: when(r[L.Sent]), from: String(r[L.From]), to: String(r[L.To]), pt: String(r[L.Patient]), status: String(r[L.Status]), room: String(r[L.Room]), note: String(r[L.Note]), ackBy: String(r[L["Acked by"]]), ackAt: when(r[L["Acked at"]]) });
 async function refresh() {
-  try {
-    const d = await store.read(() => bootStep(0, "Connected")); state.ready = d.ready;
+  try { await apply(await store.read(() => bootStep(0, "Connected"))); return true; }
+  catch (e) { fail(e); await bootDone(); return false; }
+}
+/* what a read found: the pane's own, or (full screen) the pane's copy */
+async function apply(d) {
+    state.ready = d.ready;
     if (d.ready) {
       state.log = d.log.filter(r => r[L.ID] !== "").map(toMsg).filter(m => m.sent.startsWith(today()));
       state.res = d.res.filter(r => String(r[0]).trim()).map(r => ({ name: String(r[0]).trim(), zoom: String(r[1]).trim(), nudge: String(r[2]).trim(), room: String(r[3]).trim() }));
@@ -187,8 +202,8 @@ async function refresh() {
       bootStep(2, d.ready ? `${state.res.length} ${state.res.length === 1 ? "clinician or device" : "clinicians and devices"}` : "Not set up yet");
       bootStep(3, d.ready ? (state.apptNote ? "No report pasted yet" : `${n(state.appts.length, "appointment")} today`) : "Not set up yet");
     }
-    render(); alertNew(); await bootDone(); return true;
-  } catch (e) { fail(e); await bootDone(); return false; }
+    render(); alertNew(); await bootDone();
+    if (!FULL) { state.lastD = d; Shell.update(); }
 }
 
 /* ---------- the loading screen, then "Enter your name" (both as in the IVK Tracker) ----------
@@ -196,12 +211,12 @@ async function refresh() {
    remembers, per workbook, who picked today and who has used it here before (localStorage "kinnectWho:<workbook key>").
    The pick lasts the day; nobody is picked for you. It is separate from who this computer is for (front desk or a resource). */
 const USERS_KEY = "kinnectUsers", WBID_KEY = "kinnectWbId";
-const BOOT = ["Connecting to the workbook", "Reading the Kinnect Log", "Reading Resources", "Reading Appt List"];
-const memDoc = {};   // ?demo: document settings in memory
+const BOOT = FULL ? ["Getting the workbook from the task pane"] : ["Connecting to the workbook", "Reading the Kinnect Log", "Reading Resources", "Reading Appt List"];
+const memDoc = {};   // ?demo: document settings in memory; full screen: the pane's copy
 const doc = {
-  get: k => DEMO ? (k in memDoc ? memDoc[k] : null) : Office.context.document.settings.get(k),
-  refresh: () => new Promise(res => { if (DEMO) return res(); try { Office.context.document.settings.refreshAsync(() => res()); } catch { res(); } }),
-  set: (k, v) => new Promise((res, rej) => {
+  get: k => DEMO || FULL ? (k in memDoc ? memDoc[k] : null) : Office.context.document.settings.get(k),
+  refresh: () => FULL ? Shell.call("docs").then(o => Object.assign(memDoc, o)) : new Promise(res => { if (DEMO) return res(); try { Office.context.document.settings.refreshAsync(() => res()); } catch { res(); } }),
+  set: (k, v) => FULL ? Shell.call("docSet", k, v).then(() => { memDoc[k] = v; }) : new Promise((res, rej) => {
     if (DEMO) { memDoc[k] = v; return res(); }
     const s = Office.context.document.settings; s.set(k, v);
     s.saveAsync(r => r.status === Office.AsyncResultStatus.Succeeded ? res() : rej(new Error("Couldn't save your name to the workbook. Try again.")));
@@ -241,6 +256,7 @@ function pickOrder(users, here) {
 }
 /* today's pick on this computer, if any, and only while they're still on the workbook's list */
 function loadWho() {
+  if (FULL) return;   // full screen takes the pane's pick
   const rec = whoRead(), n = rec.day === today() ? rec.name : "", u = n && state.who.users.find(x => userKey(x.name) === userKey(n));
   state.who.name = u ? u.name : ""; state.who.day = state.who.name ? rec.day : "";
 }
@@ -248,6 +264,7 @@ function setWho(name) {
   const rec = whoRead();
   if (whoKey()) save(whoKey(), { day: today(), name, used: [name, ...rec.used.filter(n => userKey(n) !== userKey(name))].slice(0, 20) });
   Object.assign(state.who, { name, day: today(), picking: false });
+  if (FULL) Shell.call("setWho", name).catch(fail); else Shell.update();
 }
 function bootStep(i, msg) { const B = state.boot; if (!B.on) return; B.m[i] = msg; B.i = Math.max(B.i, i + 1); renderGate(); }
 async function bootDone() {
@@ -335,7 +352,7 @@ function desktopPop(m) {
 function alertNew() {
   const open = state.dev.receive ? inbox().filter(m => !m.ackBy) : [], fresh = open.filter(m => !state.alerted.has(m.id));
   fresh.forEach(m => state.alerted.add(m.id));
-  if (fresh.length && !state.first) { playSound(); fresh.forEach(desktopPop); }
+  if (fresh.length && !state.first && !FULL) { playSound(); fresh.forEach(desktopPop); }   // the pane sounds; full screen shows
   state.first = false;
   document.title = open.length ? `(${open.length}) Relay` : "Kinnect Relay";
   $("banner").innerHTML = open.length ? `<div class="banner red">${open.length} new message${open.length === 1 ? "" : "s"}</div>` : !state.dev.receive && state.me ? `<div class="banner">Notifications are off on this computer. Turn them on in Settings.</div>` : "";
@@ -375,12 +392,24 @@ function viewGuide() {
     ${[...groups].map(([k, gs]) => `<div class="group"><h2>${esc(k)}<span class="n">${gs.length}</span></h2>${gs.map(item).join("")}</div>`).join("") || `<div class="none">No SOPs match "${esc(state.gq)}".</div>`}
     ${site ? `<p class="hint"><button class="linkbtn" data-act="open" data-url="${esc(site)}">Open The Ops Guide in SharePoint</button> for everything else on the site.</p>` : ""}</section>`;
 }
+/* the toolbar (refresh, full screen, light / dark: shell.js) after who this computer is for; full screen adds the rail with the
+   add-in's name, the Dev Update bell's home right of it, and the views */
+function drawShell() {
+  const me = state.me, v = state.view === "guide" ? "guide" : state.view === "settings" ? "settings" : "home";
+  $("who").innerHTML = Shell.tools();
+  $("role").innerHTML = me && !FULL ? `<span class="who" data-act="who" title="Change who this computer is for">${esc(myName())}</span> <button class="sm" data-act="${state.view === "settings" ? "home" : "settings"}">${state.view === "settings" ? "Done" : "Settings"}</button>` : "";
+  if (!FULL) return;
+  const item = (act, label) => `<button type="button" class="item" data-act="${act}"${v === act ? ' aria-current="page"' : ""}>${label}</button>`;
+  const nav = state.ready ? item("home", "Messages") + item("guide", "Ops Guide") + (me ? item("settings", "Settings") : "") : "";
+  const who = me ? `<button type="button" class="item" data-act="who" title="Change who this computer is for"><span>${esc(myName())}<small>This computer</small></span></button>` : "";
+  $("rail").innerHTML = Shell.rail({ name: "Kinnect", sub: "Relay", nav, who });
+  $("title").textContent = !state.ready ? "Set up" : v === "guide" ? "Ops Guide" : v === "settings" ? "Settings" : !me ? "Who is this computer for?" : "Messages";
+}
 function paint() {
   const me = state.me;
-  $("tools").innerHTML = tools();
+  $("kbar").innerHTML = tools();
   $("views").innerHTML = state.ready ? `<button class="vw${state.view === "guide" ? "" : " on"}" data-act="home">Messages</button><button class="vw${state.view === "guide" ? " on" : ""}" data-act="guide">Ops Guide</button>` : "";
-  $("who").innerHTML = (me ? `<span class="who" data-act="who" title="Change who this computer is for">${esc(myName())}</span> <button class="sm" data-act="${state.view === "settings" ? "home" : "settings"}">${state.view === "settings" ? "Done" : "Settings"}</button> ` : "")
-    + `<button class="sm ibtn" data-act="reload" data-tip="Refresh" aria-label="Refresh">&#8635;</button>`;   // the Dev Update bell floats (dev-updates.js)
+  drawShell();
   if (!state.ready) return $("main").innerHTML = `<section><p>This workbook doesn't have the Kinnect sheets yet.</p><button class="pri" data-act="setup">Set up workbook</button><p class="hint">Adds a "${LOG_SHEET}" sheet for messages and a "${RES_SHEET}" sheet for each clinician or device, with Zoom and Nudge AI links.</p></section>`;
   if (state.view === "guide") return $("main").innerHTML = viewGuide();   // anyone can read the guide, even before picking a role
   if (!me) return $("main").innerHTML = viewWho();
@@ -439,7 +468,7 @@ function viewFD() {
       <div>${[[ARRIVED, "Arrived"], [TELE, "Telehealth"], ["Roomed", "Roomed"], ["Running late", "Running late"], ["No-show", "No-show"]].map(([s, l]) => `<button class="sm${s === ARRIVED && !st ? " pri" : ""}" data-act="quick" data-pt="${esc(pt(a))}" data-to="${esc(a.res)}" data-st="${esc(s)}" data-room="${esc(s === "Roomed" ? room : "")}">${l}</button>`).join("")}</div></div>`;
   }).join("");
   return `<section>
-    <div class="group"><h2>Resources<span class="n">${state.res.length}</span></h2><p class="sub">One click notifies the resource. No patient details are sent.</p>${cards || `<div class="none">Add clinicians and devices on the "${RES_SHEET}" sheet.</div>`}</div>
+    <div class="group"><h2>Resources<span class="n">${state.res.length}</span></h2><p class="sub">One click notifies the resource. No patient details are sent.</p>${cards ? `<div class="rescards">${cards}</div>` : `<div class="none">Add clinicians and devices on the "${RES_SHEET}" sheet.</div>`}</div>
     <div class="group"><h2>Today's appointments<span class="n">${state.appts.length}</span></h2>${appts || `<div class="none">${esc(state.apptNote || "No appointments left today")}</div>`}</div>
     <details class="group"><summary><b>Send a message</b></summary>${form([ALL, ...state.res.map(c => c.name)], FD_STATUS)}</details>
     ${feeds()}</section>`;
@@ -486,7 +515,6 @@ const ACT = {
   who: () => { state.me = null; state.view = "main"; save("kinnect.me", null); render(); },
   settings: () => { state.view = "settings"; render(); Promise.all(SOUNDS.map(findSound)).then(() => state.view === "settings" && render()); },
   home: () => { state.view = "main"; render(); },
-  reload: async () => { if (await refresh()) toast("Refreshed from the workbook."); },
   guide: () => { state.view = "guide"; render(); },
   gcat: el => { state.gcat = el.dataset.c; render(); },
   beFD: () => { state.me = { role: "fd" }; save("kinnect.me", state.me); state.first = true; refresh(); },
@@ -539,10 +567,31 @@ document.addEventListener("change", async e => {
 
 /* ---------- start: change events from the log table plus a light poll as a fallback ---------- */
 let soonT; const soon = () => { clearTimeout(soonT); soonT = setTimeout(refresh, 400); };   // a burst of table changes = one read
+/* what full screen may ask the pane to do; each write reads again, which sends full screen a fresh copy */
+const PANE = {
+  read: async () => { await refresh(); return state.lastD || { ready: false }; },
+  setup: async () => { await ACT.setup(); return true; },
+  append: async row => { await store.append(row); await refresh(); return true; },
+  ack: async (id, by) => { await store.ack(id, by); await refresh(); return true; },
+  saveLinks: async (name, zoom, nudge) => { await store.saveLinks(name, zoom, nudge); await refresh(); return true; },
+  saveTools: async links => { await store.saveTools(links); state.links = links; save("kinnect.links", null); await refresh(); return true; },
+  docs: async () => { await doc.refresh(); return { [USERS_KEY]: doc.get(USERS_KEY) }; },
+  docSet: async (k, v) => { await doc.set(k, v); return true; },
+  setWho: async name => { setWho(name); renderGate(); render(); return true; },
+  lsSet: async (k, v) => { save(k, v); if (k === "kinnect.me") { state.me = v; state.first = true; } else if (k === "kinnect.dev") state.dev = { ...DEV_DEFAULT, ...(v || {}) }; render(); Shell.update(); return true; }
+};
+const snap = () => ({ d: state.lastD || null, me: state.me, dev: state.dev, users: doc.get(USERS_KEY), name: state.who.name, wb: state.who.wb });
+async function fromPane(m) {
+  if (m.k !== "snap") return;
+  state.me = m.me; state.dev = { ...DEV_DEFAULT, ...(m.dev || {}) }; memDoc[USERS_KEY] = m.users; state.who.wb = m.wb;
+  if (!state.who.picking) Object.assign(state.who, { name: m.name || "", day: today() });
+  if (m.d) await apply(m.d);
+}
 async function start() {
-  if (window.DevUpdates) DevUpdates.init({ app: "kinnect", send: null });   // Dev Update notices: this add-in has no full-screen dialog
   if (state.me && state.me.role === "clin") state.me.role = "res";   // saved by version 0.1
-  state.who.wb = workbookKey(); renderGate();
+  Shell.init({ bell: "kinnect", render: drawShell, refresh: FULL ? null : refresh, toast, calls: PANE, snap, receive: m => { fromPane(m).catch(fail); } });
+  if (FULL) { $("frame").className = "fsframe"; state.me = null; renderGate(); drawShell(); return; }
+  state.who.wb = workbookKey(); renderGate(); drawShell();
   await refresh();
   if (state.ready) store.watch(soon);
   setInterval(() => { if (!document.hidden) refresh(); }, POLL_MS);
